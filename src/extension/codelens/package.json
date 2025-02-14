@@ -1,46 +1,36 @@
 {
   "name": "codelens",
-  "displayName": "CodeLens",
-  "description": "CodeLens Review is a powerful VS Code extension that enhances code review workflows by integrating inline annotations, insights, and contextual actions directly into your editor. Leveraging VS Code's CodeLens feature, this extension provides real-time review comments, suggestions, and AI-assisted insights without leaving your workspace",
+  "displayName": "CodeLens Review",
+  "description": "Enhances code reviews with AI-powered inline annotations and insights.",
   "version": "0.0.1",
   "publisher": "codelens",
-  "icon": "media/icon.png",
-  "engines": {
-    "vscode": "^1.97.0"
-  },
-  "categories": [
-    "Other"
+  "icon": "icon.png",
+  "engines": { "vscode": "^1.97.0" },
+  "categories": ["Other"],
+  "activationEvents": [
+      "onStartupFinished",
+      "onCommand:codelens.startChat"
   ],
-  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "codelens.helloWorld",
-        "title": "Hello World"
-      }
-    ]
+      "commands": [
+          {
+              "command": "codelens.startChat",
+              "title": "Start Code Review Chat"
+          }
+      ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
+      "compile": "tsc -p ./",
+      "watch": "tsc -watch -p ./",
+      "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
-    "@types/vscode": "^1.97.0",
-    "@typescript-eslint/eslint-plugin": "^8.22.0",
-    "@typescript-eslint/parser": "^8.22.0",
-    "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1",
-    "eslint": "^9.19.0",
-    "typescript": "^5.7.3"
+      "typescript": "^5.7.3",
+      "@types/vscode": "^1.97.0",
+      "@vscode/test-electron": "^2.4.1"
   },
   "dependencies": {
-    "axios": "^1.7.9"
+      "axios": "^1.7.9"
   }
 }

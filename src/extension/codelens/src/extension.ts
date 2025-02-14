@@ -4,23 +4,24 @@ import { sendFeedback, submitReview } from "./reviewApi";
 export function activate(context: vscode.ExtensionContext) {
     console.log("CodeLens Review Extension is now active!");
 
-    // Register CodeLens provider
+    // Register CodeLens provider for ALL files
     let disposable = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", language: "cpp" }, // Adjust for more languages
+        { scheme: "file", language: "*" }, // Works for all file types
         new CodeReviewProvider()
     );
     context.subscriptions.push(disposable);
 
     // Register Chat UI Command
     context.subscriptions.push(
-        vscode.commands.registerCommand("codereview.startChat", () => {
+        vscode.commands.registerCommand("codelens.startChat", () => {
             ReviewChatPanel.createOrShow(context.extensionUri);
         })
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
+// CodeLens Provider for Inline Code Reviews
 class CodeReviewProvider implements vscode.CodeLensProvider {
     async provideCodeLenses(
         document: vscode.TextDocument,
@@ -37,7 +38,6 @@ class CodeReviewProvider implements vscode.CodeLensProvider {
             );
 
             if (!reviewResults || !reviewResults.reviews) {
-                vscode.window.showWarningMessage("No review results received.");
                 return lenses;
             }
 
@@ -46,7 +46,7 @@ class CodeReviewProvider implements vscode.CodeLensProvider {
                 const range = new vscode.Range(position, position);
                 const command: vscode.Command = {
                     title: `🔍 Review: ${review.category} - ${review.message}`,
-                    command: "codereview.startChat",
+                    command: "codelens.startChat",
                     arguments: [review]
                 };
                 lenses.push(new vscode.CodeLens(range, command));
@@ -59,6 +59,7 @@ class CodeReviewProvider implements vscode.CodeLensProvider {
     }
 }
 
+// Review Chat Panel Webview
 class ReviewChatPanel {
     public static currentPanel: ReviewChatPanel | undefined;
     private readonly _panel: vscode.WebviewPanel;
@@ -109,9 +110,7 @@ class ReviewChatPanel {
             <title>Code Review Chat</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 10px; }
-                .chat-container { display: flex; flex-direction: column; height: 300px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; }
-                .chat-message { margin-bottom: 10px; }
-                .feedback-buttons { margin-top: 10px; }
+                .chat-container { height: 300px; border: 1px solid #ccc; overflow-y: auto; padding: 10px; }
             </style>
         </head>
         <body>
@@ -119,10 +118,8 @@ class ReviewChatPanel {
             <div class="chat-container" id="chatContainer">
                 <p><b>LLM Review:</b> <span id="reviewMessage">Waiting for review...</span></p>
             </div>
-            <div class="feedback-buttons">
-                <button onclick="sendFeedback('Good')">👍 Good</button>
-                <button onclick="sendFeedback('Bad')">👎 Bad</button>
-            </div>
+            <button onclick="sendFeedback('Good')">👍 Good</button>
+            <button onclick="sendFeedback('Bad')">👎 Bad</button>
 
             <script>
                 const vscode = acquireVsCodeApi();
@@ -143,11 +140,6 @@ class ReviewChatPanel {
     public dispose() {
         ReviewChatPanel.currentPanel = undefined;
         this._panel.dispose();
-        while (this._disposables.length) {
-            const item = this._disposables.pop();
-            if (item) {
-                item.dispose();
-            }
-        }
+        this._disposables.forEach(item => item.dispose());
     }
 }
