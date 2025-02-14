@@ -1,0 +1,35 @@
+version: "3"
+services:
+  vs-code-extension-server:
+    container_name: vs-code-extension-container
+    image: vs-code-extension-image
+    runtime: nvidia
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UID: 1001
+        GID: 1001
+        USERNAME: developer
+        GROUPNAME: developer
+    shm_size: '8gb'
+    working_dir: /workspace
+    tty: true
+    volumes:
+      - .:/workspace
+    ports:
+      - "8050:8050"
+    environment:
+      ENV: "dev"
+      TZ: "Asia/Tokyo"
+      LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      DEVICE: "gpu"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: [ '0,1,2,3,4,5,6,7' ]
+              capabilities: [ gpu ]
+    command: bash
