@@ -3,6 +3,8 @@
   "displayName": "CodeLens",
   "description": "CodeLens Review is a powerful VS Code extension that enhances code review workflows by integrating inline annotations, insights, and contextual actions directly into your editor. Leveraging VS Code's CodeLens feature, this extension provides real-time review comments, suggestions, and AI-assisted insights without leaving your workspace",
   "version": "0.0.1",
+  "publisher": "codelens",
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.97.0"
   },
