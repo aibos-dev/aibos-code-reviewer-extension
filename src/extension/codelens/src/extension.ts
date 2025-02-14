@@ -1,26 +1,66 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+// src/extension.ts - Main VS Code Extension Entry Point
 import * as vscode from 'vscode';
+import { sendFeedback, submitReview } from './reviewApi';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+	console.log('CodeLens Review Extension is now active!');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "codelens" is now active!');
-
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('codelens.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from CodeLens!');
-	});
+	let disposable = vscode.languages.registerCodeLensProvider(
+		{ scheme: 'file', language: 'cpp' }, // Adjust for more languages if needed
+		new CodeReviewProvider()
+	);
 
 	context.subscriptions.push(disposable);
+
+	// Register the command to show details & collect feedback
+	context.subscriptions.push(
+		vscode.commands.registerCommand('codereview.showDetails', async (review) => {
+			const feedback = await vscode.window.showQuickPick(['Good', 'Bad'], { placeHolder: 'Provide feedback' });
+			if (feedback) {
+				sendFeedback(review.reviewId, [{ category: review.category, feedback }]);
+				vscode.window.showInformationMessage(`Feedback submitted: ${feedback}`);
+			}
+		})
+	);
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
+
+class CodeReviewProvider implements vscode.CodeLensProvider {
+	async provideCodeLenses(
+		document: vscode.TextDocument,
+		token: vscode.CancellationToken
+	): Promise<vscode.CodeLens[]> {
+		let lenses: vscode.CodeLens[] = [];
+
+		try {
+			const reviewResults = await submitReview(
+				document.languageId,
+				document.fileName,
+				document.getText(),
+				null // No diff available in VS Code API
+			);
+
+			if (!reviewResults || !reviewResults.reviews) {
+				vscode.window.showWarningMessage("No review results received.");
+				return lenses;
+			}
+
+			reviewResults.reviews.forEach((review: any) => {
+				const position = new vscode.Position(0, 0); // Adjust if needed
+				const range = new vscode.Range(position, position);
+				const command: vscode.Command = {
+					title: `🔍 Review: ${review.category} - ${review.message}`,
+					command: 'codereview.showDetails',
+					arguments: [review]
+				};
+				lenses.push(new vscode.CodeLens(range, command));
+			});
+
+		} catch (error) {
+			vscode.window.showErrorMessage(`Error fetching code review: ${error}`);
+		}
+
+		return lenses;
+	}
+}
