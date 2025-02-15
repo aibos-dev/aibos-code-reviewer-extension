@@ -24,28 +24,28 @@ ENV TZ=Asia/Tokyo \
 WORKDIR /tmp/
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && apt-get update && apt-get install -y --no-install-recommends \
-        git \
-        zip \
-        wget \
-        curl \
-        make \
-        llvm \
-        ffmpeg \
-        tzdata \
-        tk-dev \
-        graphviz \
-        xz-utils \
-        zlib1g-dev \
-        libssl-dev \
-        libbz2-dev \
-        libffi-dev \
-        liblzma-dev \
-        libsqlite3-dev \
-        libgl1-mesa-dev \
-        libreadline-dev \
-        libncurses5-dev \
-        libncursesw5-dev \
-        build-essential \
+    git \
+    zip \
+    wget \
+    curl \
+    make \
+    llvm \
+    ffmpeg \
+    tzdata \
+    tk-dev \
+    graphviz \
+    xz-utils \
+    zlib1g-dev \
+    libssl-dev \
+    libbz2-dev \
+    libffi-dev \
+    liblzma-dev \
+    libsqlite3-dev \
+    libgl1-mesa-dev \
+    libreadline-dev \
+    libncurses5-dev \
+    libncursesw5-dev \
+    build-essential \
     #
     # Install Python from source
     && cd /usr/local/ && wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tar.xz \
@@ -97,7 +97,7 @@ RUN echo "export PATH=/usr/local/nvm/versions/node/v$NODE_VERSION/bin:\$PATH" >>
 
 # Copy startup script for Ollama model download
 COPY sh/download_models.sh /usr/local/bin/download_models.sh
-RUN chmod +x /usr/local/bin/download_models.sh
+# RUN chmod +x /usr/local/bin/download_models.sh
 
 # Start Ollama and download the model at runtime
 CMD ollama serve & sleep 5 && download_models.sh && exec /bin/bash
