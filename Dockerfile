@@ -17,7 +17,8 @@ ENV TZ=Asia/Tokyo \
     UV_PROJECT_ENVIRONMENT="/usr/local/" \
     NVM_DIR="/usr/local/nvm" \
     NODE_VERSION=$NODE_VERSION \
-    PATH="/usr/local/nvm/versions/node/v$NODE_VERSION/bin:$PATH"
+    PATH="/usr/local/nvm/versions/node/v$NODE_VERSION/bin:$PATH" \
+    OLLAMA_MODEL="deepseek-r1-70b"
 
 # Install system dependencies, build Python from source, and install Node.js
 WORKDIR /tmp/
@@ -63,6 +64,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     # Verify installations
     && node -v && npm -v \
     #
+    # Install Ollama
+    && curl -fsSL https://ollama.com/install.sh | sh \
+    #
     # Cleanup
     && apt-get autoremove -y \
     && apt-get clean \
@@ -91,5 +95,9 @@ USER ${USERNAME}:${GROUPNAME}
 # Ensure Node.js and npm are accessible in every shell
 RUN echo "export PATH=/usr/local/nvm/versions/node/v$NODE_VERSION/bin:\$PATH" >> ~/.bashrc
 
-# Set default shell
-CMD ["/bin/bash"]
+# Copy startup script for Ollama model download
+COPY sh/download_models.sh /usr/local/bin/download_models.sh
+RUN chmod +x /usr/local/bin/download_models.sh
+
+# Start Ollama and download the model at runtime
+CMD ollama serve & sleep 5 && download_models.sh && exec /bin/bash
