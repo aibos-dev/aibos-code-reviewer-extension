@@ -1,3 +1,6 @@
+<<<<<<< HEAD
+# aibos-code-reviewer-extension
+=======
 # Usage
 
 ```
@@ -9,3 +12,4 @@ sh start_docker_compose.sh
 uv add ***
 ```
 パッケージを追加してください。
+>>>>>>> master
