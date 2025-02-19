@@ -37,7 +37,11 @@ def review_code(review_req: ReviewRequest, db_session: Session = Depends(get_db_
     ReviewResponse
         Includes the newly created review ID and category-wise feedback.
     """
-    prompt_str = f"Please review the following {review_req.language} code:\n\n{review_req.sourceCode}\n\nDiff:\n{review_req.diff}"
+    prompt_str = (
+        f"Please review the following {review_req.language} code:\n\n"
+        f"{review_req.sourceCode}\n\n"
+        f"Diff:\n{review_req.diff}"
+    )
 
     try:
         llm_engine = OllamaEngine()  # Instantiate Ollama engine
@@ -57,6 +61,7 @@ def review_code(review_req: ReviewRequest, db_session: Session = Depends(get_db_
             ReviewResponseCategory(category=cat.category_name, message=cat.message) for cat in review_obj.categories
         ]
         return ReviewResponse(reviewId=str(review_obj.review_id), reviews=response_cats)
+
     except Exception:
         logger.exception("Error occurred while performing code review.")
         raise HTTPException(status_code=500, detail="Failed to perform code review.")

@@ -8,14 +8,7 @@ The schema follows "LLM Code Review System - Database Schema Documentation".
 
 import uuid
 
-from sqlalchemy import (
-    JSON,
-    TIMESTAMP,
-    Column,
-    ForeignKey,
-    String,
-    Text,
-)
+from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import BIGSERIAL, UUID
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func

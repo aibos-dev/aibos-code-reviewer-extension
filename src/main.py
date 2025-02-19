@@ -30,7 +30,7 @@ app = FastAPI(title="LLM Review API", version="1.0")
 app.include_router(review_router)
 
 
-def main():
+def main() -> None:
     """
     Main function to parse command-line arguments with Tap and start the Uvicorn server.
 
@@ -41,11 +41,11 @@ def main():
     try:
         from tap import Tap  # typed-argument-parser
     except ImportError:
-        logger.error("Tap module not installed. Please `pip install typed-argument-parser`.")
+        logger.exception("Tap module not installed. Please `pip install typed-argument-parser`.")
         sys.exit(1)
 
     class ArgsParser(Tap):
-        host: str = "0.0.0.0"
+        host: str = "127.0.0.1"
         port: int = 8000
         debug: bool = False
 

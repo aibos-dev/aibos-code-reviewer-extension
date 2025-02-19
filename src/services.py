@@ -59,8 +59,7 @@ def generate_and_save_review(
             future = executor.submit(llm_engine.generate_review, prompt_str)
             llm_result = future.result()  # Wait for inference
 
-        # Parse the llm_result to get categories, etc.
-        # Here we just create one category as a demo:
+        # Create and insert a new review record
         new_review = Reviews(
             language=language_str,
             source_code=sourcecode_str,
@@ -71,17 +70,18 @@ def generate_and_save_review(
         session.add(new_review)
         session.flush()
 
-        # Create one category item as an example
+        # Create a single category from the LLM output (example)
         cat = ReviewCategories(
             review_id=new_review.review_id,
             category_name="General Feedback",
-            message=llm_result[:200],  # first 200 characters from the LLM output
+            message=llm_result[:200],  # first 200 characters from LLM output
         )
         session.add(cat)
 
         session.commit()
         session.refresh(new_review)
         return new_review
+
     except Exception:
         logger.exception("Error occurred while generating or saving the review.")
         session.rollback()
