@@ -19,21 +19,25 @@ import logging
 import os
 from collections.abc import Iterator
 
+from dotenv import load_dotenv  # Load .env package
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+# Load environment variables from .env file
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
-# Environment variables (or other configuration sources)
+# Fetch PostgreSQL settings from .env
 POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "your_default_password")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "llm_review_db")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
 DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-# Define engine and sessionmaker
+# Define SQLAlchemy engine and sessionmaker
 engine = create_engine(DATABASE_URL, echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 

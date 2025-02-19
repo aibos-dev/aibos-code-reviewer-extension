@@ -42,7 +42,7 @@ class OllamaEngine(BaseLLMEngine):
         try:
             # Example: synchronous CLI call
             # In production, you might prefer an HTTP API approach.
-            command_list = ["ollama", "run", "--model", "deapseek-r1-70b-q4", prompt_str]
+            command_list = ["ollama", "run", "deepseek-r1:70b", prompt_str]
             completed_process = subprocess.run(command_list, capture_output=True, text=True, check=False)
 
             if completed_process.returncode != 0:
