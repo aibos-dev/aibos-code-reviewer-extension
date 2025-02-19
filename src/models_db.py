@@ -3,12 +3,22 @@ Database Table Definitions
 ==========================
 
 Defines tables for PostgreSQL using SQLAlchemy.
-The schema follows "LLM Code Review System - Database Schema Documentation".
+Includes:
+- Reviews, ReviewCategories, ReviewFeedback, Models
+- NEW: ReviewJobs for job queue tracking.
 """
 
 import uuid
-
-from sqlalchemy import JSON, TIMESTAMP, BigInteger, Column, ForeignKey, String, Text
+from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
+    BigInteger,
+    Column,
+    ForeignKey,
+    String,
+    Text,
+    Enum,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
@@ -16,17 +26,53 @@ from sqlalchemy.sql import func
 Base = declarative_base()
 
 
+class ReviewJobs(Base):
+    """
+    ReviewJobs Table
+    ----------------
+    - job_id: Unique ID for the job
+    - status: queued, in_progress, completed, canceled, error
+    - created_at: When the job was created
+    - completed_at: When the job completed or canceled
+    - review_id: (Optional) references the Reviews table
+    """
+
+    __tablename__ = "review_jobs"
+
+    job_id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        nullable=False
+    )
+    status = Column(
+        Enum("queued", "in_progress", "completed", "canceled", "error", name="job_status"),
+        nullable=False,
+        default="queued"
+    )
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False
+    )
+    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+    # Link to the Reviews table once the review is complete
+    review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=True)
+    review = relationship("Reviews", back_populates="job")
+
+
 class Reviews(Base):
     """
     Reviews Table
     -------------
     - review_id: Unique ID for the review
-    - language: Programming language of the source code
+    - language: Programming language
     - source_code: Full source code text
-    - diff: Code diff information
+    - diff: Code diff
     - file_name: Filename
     - options: JSON for additional options
-    - created_at: Timestamp when the review was created
+    - created_at: Timestamp
     - model_id: (Optional) references the model used
     """
 
@@ -41,6 +87,9 @@ class Reviews(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     model_id = Column(UUID(as_uuid=True), ForeignKey("models.model_id"), nullable=True)
 
+    # One-to-one relationship with ReviewJobs
+    job = relationship("ReviewJobs", back_populates="review", uselist=False)
+
     categories = relationship("ReviewCategories", back_populates="review", cascade="all, delete")
     feedbacks = relationship("ReviewFeedback", back_populates="review", cascade="all, delete")
 
@@ -49,11 +98,11 @@ class ReviewCategories(Base):
     """
     ReviewCategories Table
     ----------------------
-    - id: Primary key
-    - review_id: Foreign key to Reviews table
-    - category_name: Category name (e.g., "Memory Management")
-    - message: Feedback message for that category
-    - created_at: Timestamp
+    - id
+    - review_id
+    - category_name
+    - message
+    - created_at
     """
 
     __tablename__ = "review_categories"
@@ -71,11 +120,11 @@ class ReviewFeedback(Base):
     """
     ReviewFeedback Table
     --------------------
-    - feedback_id: Primary key
-    - review_id: Foreign key to Reviews table
-    - category_name: Category for which the feedback is given
-    - user_feedback: e.g., "Good"/"Bad"
-    - created_at: Timestamp
+    - feedback_id
+    - review_id
+    - category_name
+    - user_feedback
+    - created_at
     """
 
     __tablename__ = "review_feedback"
@@ -91,14 +140,14 @@ class ReviewFeedback(Base):
 
 class Models(Base):
     """
-    Models Table (Optional)
-    -----------------------
-    - model_id: Unique model ID
-    - name: Human-readable model name
-    - version: Model version
-    - hosted_by: Hosting environment (e.g., "Ollama")
-    - description: Description of the model
-    - created_at: Timestamp
+    Models Table
+    ------------
+    - model_id
+    - name
+    - version
+    - hosted_by
+    - description
+    - created_at
     """
 
     __tablename__ = "models"

@@ -2,3 +2,4 @@
 !data/sample_data
 *_cache
 src/.env
+*pyc
