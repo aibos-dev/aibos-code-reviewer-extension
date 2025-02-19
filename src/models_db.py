@@ -8,8 +8,8 @@ The schema follows "LLM Code Review System - Database Schema Documentation".
 
 import uuid
 
-from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import BIGSERIAL, UUID
+from sqlalchemy import JSON, TIMESTAMP, BigInteger, Column, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -58,7 +58,7 @@ class ReviewCategories(Base):
 
     __tablename__ = "review_categories"
 
-    id = Column(BIGSERIAL, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=False)
     category_name = Column(String(100), nullable=False)
     message = Column(Text, nullable=False)
@@ -80,7 +80,7 @@ class ReviewFeedback(Base):
 
     __tablename__ = "review_feedback"
 
-    feedback_id = Column(BIGSERIAL, primary_key=True, autoincrement=True)
+    feedback_id = Column(BigInteger, primary_key=True, autoincrement=True)
     review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=False)
     category_name = Column(String(100), nullable=False)
     user_feedback = Column(String(10), nullable=False)

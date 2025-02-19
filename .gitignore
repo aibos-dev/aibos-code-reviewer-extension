@@ -1,3 +1,4 @@
 .DS_Store
 !data/sample_data
 *_cache
+src/.env
