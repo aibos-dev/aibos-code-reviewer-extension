@@ -9,12 +9,16 @@ Possible categories: [Memory Management, Performance, Null Check, Security, Codi
 """
 
 import logging
+import os
 import subprocess
 from typing import Any
 
 from .base import BaseLLMEngine
 
 logger = logging.getLogger(__name__)
+
+# Load debug mode from environment
+DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
 
 class OllamaEngine(BaseLLMEngine):
@@ -42,6 +46,9 @@ class OllamaEngine(BaseLLMEngine):
             If Ollama inference fails.
         """
         try:
+            if DEBUG_MODE:
+                logger.debug(f"[OllamaEngine] Command Prompt:\n{prompt_str}")
+
             command_list = ["ollama", "run", "deepseek-r1:70b", prompt_str]
             completed_process = subprocess.run(command_list, capture_output=True, text=True, check=False)
 
@@ -49,7 +56,11 @@ class OllamaEngine(BaseLLMEngine):
                 logger.error(f"Failed to run Ollama inference: {completed_process.stderr}")
                 raise RuntimeError("Ollama inference failed.")
 
-            return completed_process.stdout.strip()
+            output = completed_process.stdout.strip()
+            if DEBUG_MODE:
+                logger.debug(f"[OllamaEngine] Raw LLM Output:\n{output}")
+
+            return output
 
         except Exception:
             logger.exception("Error while running Ollama engine.")

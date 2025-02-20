@@ -25,13 +25,11 @@ def review_code(review_req: ReviewRequest, db_session: Session = Depends(get_db_
     """
     Synchronous code review returning multiple categories.
     """
-    prompt_str = "Synchronous code review placeholder. We'll re-format in services layer."
     try:
         llm_engine = OllamaEngine()
         review_obj = generate_and_save_review(
             session=db_session,
             llm_engine=llm_engine,
-            prompt_str=prompt_str,
             language_str=review_req.language,
             sourcecode_str=review_req.sourceCode,
             diff_str=review_req.diff,
@@ -52,7 +50,7 @@ def review_code(review_req: ReviewRequest, db_session: Session = Depends(get_db_
 @router.post("/review/feedback")
 def review_feedback(review_req: ReviewFeedbackRequest, db_session: Session = Depends(get_db_session)) -> dict:
     """
-    Feedback for an existing review (Good/Bad).
+    Allows users to provide feedback (e.g., Good/Bad) for an existing review.
     """
     try:
         feedback_list = [(f.category, f.feedback) for f in review_req.feedbacks]
@@ -60,7 +58,6 @@ def review_feedback(review_req: ReviewFeedbackRequest, db_session: Session = Dep
         return {"status": "success", "message": "Feedback saved."}
 
     except HTTPException as e:
-        # e.g. if the review doesn't exist
         raise e
 
     except Exception:
@@ -69,6 +66,8 @@ def review_feedback(review_req: ReviewFeedbackRequest, db_session: Session = Dep
 
 
 # === Asynchronous queue endpoints ===
+
+
 @router.post("/jobs")
 def create_review_job(review_req: ReviewRequest, db_session: Session = Depends(get_db_session)) -> dict:
     """

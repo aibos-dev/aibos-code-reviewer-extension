@@ -10,6 +10,7 @@ Handles:
 
 import json
 import logging
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -23,15 +24,17 @@ from .schemas import ReviewRequest
 
 logger = logging.getLogger(__name__)
 
+# For async jobs
 job_queue = Queue()
 
 STANDARD_CATEGORIES = ["Memory Management", "Performance", "Null Check", "Security", "Coding Standard"]
+DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
 
 def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
     """
     Provide a prompt that instructs the LLM to return JSON with multiple categories.
-    We mention the 5 standard categories, but the LLM can still produce others.
+    We mention 5 standard categories, but the LLM can still produce others.
     """
     instructions = (
         "Return only valid JSON in this format:\n"
@@ -69,15 +72,22 @@ def _parse_llm_output(raw_output: str) -> list[dict]:
             c = item.get("category", "General Feedback")
             m = item.get("message", raw_output[:200])
             result.append({"category": c, "message": m})
+
+        if DEBUG_MODE:
+            logger.debug(f"Parsed LLM output as multiple categories: {result}")
+
         return result
 
     except Exception as e:
         logger.warning(f"Failed to parse LLM JSON. Fallback to single category. Error: {e}")
-        return [{"category": "General Feedback", "message": raw_output[:300]}]
+        fallback = [{"category": "General Feedback", "message": raw_output[:300]}]
+        if DEBUG_MODE:
+            logger.debug(f"Falling back to single category: {fallback}")
+        return fallback
 
 
 # -----------------------------------------
-# Async Job Worker
+# Asynchronous job worker logic
 # -----------------------------------------
 def queue_review_job(session: Session, review_req: ReviewRequest) -> str:
     new_job = ReviewJobs()
@@ -117,7 +127,6 @@ def _process_single_job(job_id: str, review_req_dict: dict) -> None:
             raw_output = engine.generate_review(prompt_str)
             cat_data = _parse_llm_output(raw_output)
 
-            # Save a new review
             new_review = Reviews(
                 language=review_req.language,
                 source_code=review_req.sourceCode,
@@ -128,7 +137,6 @@ def _process_single_job(job_id: str, review_req_dict: dict) -> None:
             session.add(new_review)
             session.flush()  # get review_id
 
-            # Insert categories
             for cat_item in cat_data:
                 rc = ReviewCategories(
                     review_id=new_review.review_id, category_name=cat_item["category"], message=cat_item["message"]
@@ -136,7 +144,6 @@ def _process_single_job(job_id: str, review_req_dict: dict) -> None:
                 session.add(rc)
             session.commit()
 
-            # Link job to review
             job.review_id = new_review.review_id
             job.status = "completed"
             job.completed_at = datetime.utcnow()
@@ -150,7 +157,7 @@ def _process_single_job(job_id: str, review_req_dict: dict) -> None:
             session.commit()
 
 
-# Start the worker thread on import
+# Start the background worker on import
 worker_thread = threading.Thread(target=process_jobs_in_background, daemon=True)
 worker_thread.start()
 
@@ -192,19 +199,27 @@ def cancel_job(session: Session, job_id: str) -> dict | None:
 def generate_and_save_review(
     session: Session,
     llm_engine: BaseLLMEngine,
-    prompt_str: str,
     language_str: str,
     sourcecode_str: str,
     diff_str: str | None,
     filename_str: str | None,
     options_dict: dict | None,
+    prompt_str: str = None,
 ) -> Reviews:
+    """
+    Synchronously calls the LLM to generate multiple categories.
+    'prompt_str' is optional. If None, we'll format a new prompt ourselves.
+    """
     try:
-        # We'll re-format the prompt to produce multi-category JSON
-        final_prompt = _format_prompt(language_str, sourcecode_str, diff_str)
+        if prompt_str is None:
+            # In case we want to pass a custom prompt
+            prompt_str = _format_prompt(language_str, sourcecode_str, diff_str)
+
+        if DEBUG_MODE:
+            logger.debug(f"Synchronous Review Prompt:\n{prompt_str}")
 
         with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(llm_engine.generate_review, final_prompt)
+            future = executor.submit(llm_engine.generate_review, prompt_str)
             raw_output = future.result()
 
         cat_data = _parse_llm_output(raw_output)
@@ -219,7 +234,6 @@ def generate_and_save_review(
         session.add(new_review)
         session.flush()
 
-        # Insert multiple categories
         for cat_item in cat_data:
             rc = ReviewCategories(
                 review_id=new_review.review_id, category_name=cat_item["category"], message=cat_item["message"]
@@ -228,6 +242,10 @@ def generate_and_save_review(
 
         session.commit()
         session.refresh(new_review)
+
+        if DEBUG_MODE:
+            logger.debug(f"Synchronous review created. ID: {new_review.review_id}")
+
         return new_review
 
     except Exception:
@@ -241,7 +259,6 @@ def save_feedback(session: Session, review_id_str: str, feedback_list: list[tupl
     Saves user feedback to the database after verifying the review exists.
     """
     try:
-        # Check that the review exists to avoid foreign key errors
         review = session.query(Reviews).filter(Reviews.review_id == review_id_str).first()
         if not review:
             raise ValueError(f"Review with ID {review_id_str} not found.")
@@ -253,7 +270,6 @@ def save_feedback(session: Session, review_id_str: str, feedback_list: list[tupl
 
     except ValueError as e:
         logger.error(f"Error while saving feedback: {e}")
-        # Raise 404 to notify the user
         from fastapi import HTTPException
 
         raise HTTPException(status_code=404, detail=str(e))

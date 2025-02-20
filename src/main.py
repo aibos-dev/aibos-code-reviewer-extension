@@ -25,7 +25,7 @@ app.include_router(review_router)
 
 def main() -> None:
     try:
-        from tap import Tap
+        from tap import Tap  # typed-argument-parser
     except ImportError:
         logger.exception("Tap module not installed. Please `pip install typed-argument-parser`.")
         sys.exit(1)

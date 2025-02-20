@@ -3,27 +3,16 @@ Database Table Definitions
 ==========================
 
 Defines tables for:
-- ReviewJobs (for async queue)
+- ReviewJobs (async queue)
 - Reviews
 - ReviewCategories
 - ReviewFeedback
 - Models
-
-We allow multiple categories, e.g. 'Memory Management', 'Performance', etc.
 """
 
 import uuid
 
-from sqlalchemy import (
-    JSON,
-    TIMESTAMP,
-    BigInteger,
-    Column,
-    Enum,
-    ForeignKey,
-    String,
-    Text,
-)
+from sqlalchemy import JSON, TIMESTAMP, BigInteger, Column, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
@@ -37,8 +26,8 @@ class ReviewJobs(Base):
     ----------------
     - job_id: Unique ID
     - status: queued, in_progress, completed, canceled, error
-    - created_at: Timestamp
-    - completed_at: Timestamp when job is done
+    - created_at: auto
+    - completed_at: set on finish
     - review_id: references the Reviews table
     """
 
@@ -61,7 +50,14 @@ class Reviews(Base):
     """
     Reviews Table
     -------------
-    Tracks code reviews, with multiple categories in review_categories.
+    - review_id: Unique ID
+    - language
+    - source_code
+    - diff
+    - file_name
+    - options
+    - created_at
+    - model_id (optional)
     """
 
     __tablename__ = "reviews"
@@ -85,7 +81,11 @@ class ReviewCategories(Base):
     """
     ReviewCategories Table
     ----------------------
-    Each row is one category (e.g. 'Memory Management') with a message.
+    - id: BigInteger PK
+    - review_id: FK
+    - category_name
+    - message
+    - created_at
     """
 
     __tablename__ = "review_categories"
@@ -105,8 +105,9 @@ class ReviewFeedback(Base):
     --------------------
     - feedback_id: PK
     - review_id: FK to Reviews
-    - category_name: e.g. "Memory Management"
-    - user_feedback: e.g., "Good" or "Bad"
+    - category_name
+    - user_feedback
+    - created_at
     """
 
     __tablename__ = "review_feedback"
@@ -124,7 +125,7 @@ class Models(Base):
     """
     Models Table
     ------------
-    For storing model metadata if needed.
+    For storing extra info about the LLM models.
     """
 
     __tablename__ = "models"
