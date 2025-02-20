@@ -47,7 +47,7 @@ class OllamaEngine(BaseLLMEngine):
         """
         try:
             if DEBUG_MODE:
-                logger.debug(f"[OllamaEngine] Command Prompt:\n{prompt_str}")
+                logger.debug(f"[OllamaEngine] Sending Prompt:\n{prompt_str}")
 
             command_list = ["ollama", "run", "deepseek-r1:70b", prompt_str]
             completed_process = subprocess.run(command_list, capture_output=True, text=True, check=False)
@@ -57,11 +57,13 @@ class OllamaEngine(BaseLLMEngine):
                 raise RuntimeError("Ollama inference failed.")
 
             output = completed_process.stdout.strip()
+
             if DEBUG_MODE:
-                logger.debug(f"[OllamaEngine] Raw LLM Output:\n{output}")
+                logger.debug(f"[OllamaEngine] Raw Output Length: {len(output)} characters")
+                logger.debug(f"[OllamaEngine] Full Response:\n{output}")
 
             return output
 
-        except Exception:
-            logger.exception("Error while running Ollama engine.")
+        except Exception as e:
+            logger.exception(f"Error while running Ollama: {e}")
             raise

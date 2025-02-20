@@ -36,12 +36,18 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
     Provide a prompt that instructs the LLM to return JSON with multiple categories.
     We mention 5 standard categories, but the LLM can still produce others.
     """
+
     instructions = (
-        "Return only valid JSON in this format:\n"
+        "Return only valid JSON in this format, ensuring that 'General Feedback' is always included alongside other categories. "
+        "The message can contain code snippets for suggested fixes:\n"
         "[\n"
         "  {\n"
+        '    "category": "General Feedback",\n'
+        '    "message": "<overall analysis and summary of the review>"\n'
+        "  },\n"
+        "  {\n"
         '    "category": "(one of Memory Management, Performance, Null Check, Security, Coding Standard, or any other)",\n'
-        '    "message": "<explanation>"\n'
+        '    "message": "<specific issue and possible fix>"\n'
         "  },\n"
         "  ...\n"
         "]\n"
@@ -52,38 +58,121 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
         f"Please review the following {language} code:\n\n"
         f"{source_code}\n\n"
         f"Diff:\n{diff or ''}\n\n"
-        f"Categories of interest: {STANDARD_CATEGORIES}\n"
+        f"Categories of interest: Memory Management, Performance, Null Check, Security, Coding Standard, or others.\n\n"
+        f"{instructions}"
     )
-    return base_prompt + instructions
+
+    return base_prompt
 
 
 def _parse_llm_output(raw_output: str) -> list[dict]:
     """
-    Attempt to parse LLM output as JSON with multiple categories.
-    Fallback to single category if parse fails.
+    Parses the LLM output into multiple categories, ensuring proper JSON structure.
+    Handles various edge cases in LLM responses to maintain consistent output format.
     """
+    import re
+
+    # Strip any leading/trailing whitespace and detect JSON blocks
+    cleaned_output = raw_output.strip()
+
+    # Look for JSON array pattern - handles cases where LLM might include thinking/explanation
+    json_match = re.search(r"\[\s*\{.*\}\s*\]", cleaned_output, re.DOTALL)
+    if json_match:
+        cleaned_output = json_match.group(0)
+
     try:
-        data = json.loads(raw_output)
+        # Parse the JSON
+        data = json.loads(cleaned_output)
+
+        # Ensure it's a list
         if not isinstance(data, list):
-            data = [data]
+            data = [data]  # Convert single object to list
 
-        result = []
+        # Validate each item has required fields
+        validated_items = []
+        general_feedback = None
+
         for item in data:
-            c = item.get("category", "General Feedback")
-            m = item.get("message", raw_output[:200])
-            result.append({"category": c, "message": m})
+            if not isinstance(item, dict):
+                continue
 
-        if DEBUG_MODE:
-            logger.debug(f"Parsed LLM output as multiple categories: {result}")
+            if "category" in item and "message" in item:
+                # Store General Feedback separately to ensure it comes first
+                if item["category"] == "General Feedback":
+                    general_feedback = item
+                else:
+                    validated_items.append(item)
 
+        # If no general feedback was found, create a fallback
+        if not general_feedback:
+            # Try to extract a reasonable message from the raw output
+            fallback_message = raw_output
+            if len(fallback_message) > 5000:  # Truncate if too long
+                fallback_message = fallback_message[:1000] + "..."
+
+            general_feedback = {"category": "General Feedback", "message": fallback_message}
+
+        # Return with General Feedback first, followed by other categories
+        result = [general_feedback] + validated_items
+
+        logger.debug(f"Parsed LLM Output: {json.dumps(result, indent=2, ensure_ascii=False)}")
         return result
 
-    except Exception as e:
-        logger.warning(f"Failed to parse LLM JSON. Fallback to single category. Error: {e}")
-        fallback = [{"category": "General Feedback", "message": raw_output[:300]}]
-        if DEBUG_MODE:
-            logger.debug(f"Falling back to single category: {fallback}")
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse LLM JSON. Error: {e}. Raw output: {raw_output[:100]}...")
+
+        # More robust fallback - try to extract any JSON-like parts
+        try:
+            # Look for anything that might be JSON arrays or objects
+            potential_json = re.findall(r"(\[.*?\]|\{.*?\})", raw_output, re.DOTALL)
+            for json_candidate in potential_json:
+                try:
+                    parsed = json.loads(json_candidate)
+                    if isinstance(parsed, list) and len(parsed) > 0:
+                        return _parse_llm_output(json_candidate)  # Recursively try to parse this candidate
+                    if isinstance(parsed, dict) and "category" in parsed and "message" in parsed:
+                        return [parsed]  # We found a valid item
+                except:
+                    continue
+        except:
+            pass  # Silently fail if regex fails
+
+        # Ultimate fallback - just wrap the raw output
+        fallback = [{"category": "General Feedback", "message": raw_output}]
+        logger.debug("Using ultimate fallback response")
+
         return fallback
+
+
+def format_review_response(review: Reviews) -> dict:
+    """
+    Formats a review into the desired JSON response structure.
+
+    Args:
+        review: The Reviews object from the database
+
+    Returns:
+        dict: Formatted response with reviewId and reviews array
+    """
+    # Extract categories and format them
+    categories = []
+    for category in review.categories:
+        categories.append({"category": category.category_name, "message": category.message})
+
+    # Ensure General Feedback always comes first
+    general_first = []
+    other_categories = []
+
+    for cat in categories:
+        if cat["category"] == "General Feedback":
+            general_first.append(cat)
+        else:
+            other_categories.append(cat)
+
+    # Construct the final response
+    response = {"reviewId": str(review.review_id), "reviews": general_first + other_categories}
+
+    return response
 
 
 # -----------------------------------------
@@ -163,18 +252,21 @@ worker_thread.start()
 
 
 def get_job_status(session: Session, job_id: str) -> dict | None:
+    """
+    Get the status of a job and its review results if completed.
+    Uses format_review_response for consistent response formatting.
+    """
     job = session.query(ReviewJobs).filter(ReviewJobs.job_id == job_id).first()
     if not job:
         return None
 
     resp = {"jobId": str(job.job_id), "status": job.status}
-    if job.status == "completed":
+    if job.status == "completed" and job.review_id:
         review = session.query(Reviews).filter(Reviews.review_id == job.review_id).first()
         if review:
-            cats = []
-            for c in review.categories:
-                cats.append({"category": c.category_name, "message": c.message})
-            resp["reviews"] = cats
+            # Use the formatter to get consistent response structure
+            formatted_response = format_review_response(review)
+            resp["reviews"] = formatted_response["reviews"]
 
     return resp
 
@@ -201,14 +293,26 @@ def generate_and_save_review(
     llm_engine: BaseLLMEngine,
     language_str: str,
     sourcecode_str: str,
-    diff_str: str | None,
-    filename_str: str | None,
-    options_dict: dict | None,
-    prompt_str: str = None,
-) -> Reviews:
+    diff_str: str | None = None,
+    filename_str: str | None = None,
+    options_dict: dict | None = None,
+    prompt_str: str | None = None,
+) -> dict:
     """
-    Synchronously calls the LLM to generate multiple categories.
-    'prompt_str' is optional. If None, we'll format a new prompt ourselves.
+    Synchronously calls the LLM to generate multiple categories and returns formatted response.
+
+    Args:
+        session: Database session
+        llm_engine: LLM engine instance
+        language_str: Programming language of code to review
+        sourcecode_str: Source code to review
+        diff_str: Optional diff information
+        filename_str: Optional filename
+        options_dict: Optional additional options
+        prompt_str: Optional custom prompt (if None, one will be generated)
+
+    Returns:
+        Dict: Formatted review response with reviewId and reviews
     """
     try:
         if prompt_str is None:
@@ -246,27 +350,44 @@ def generate_and_save_review(
         if DEBUG_MODE:
             logger.debug(f"Synchronous review created. ID: {new_review.review_id}")
 
-        return new_review
+        # Format the review response before returning
+        return format_review_response(new_review)
 
-    except Exception:
-        logger.exception("Error occurred while generating or saving the review.")
+    except Exception as e:
+        logger.exception(f"Error occurred while generating or saving the review: {e!s}")
         session.rollback()
         raise
 
 
-def save_feedback(session: Session, review_id_str: str, feedback_list: list[tuple[str, str]]) -> None:
+def save_feedback(session: Session, review_id_str: str, feedback_list: list[tuple[str, str]]) -> dict:
     """
     Saves user feedback to the database after verifying the review exists.
+
+    Args:
+        session: Database session
+        review_id_str: Review ID to save feedback for
+        feedback_list: List of tuples with (category_name, feedback_value)
+
+    Returns:
+        Dict: Success response with review ID and count of feedback items saved
+
+    Raises:
+        HTTPException: If review not found or other error occurs
     """
     try:
         review = session.query(Reviews).filter(Reviews.review_id == review_id_str).first()
         if not review:
             raise ValueError(f"Review with ID {review_id_str} not found.")
 
+        saved_count = 0
         for category_name, feedback_value in feedback_list:
             fb = ReviewFeedback(review_id=review_id_str, category_name=category_name, user_feedback=feedback_value)
             session.add(fb)
+            saved_count += 1
+
         session.commit()
+
+        return {"reviewId": review_id_str, "status": "success", "feedbackSaved": saved_count}
 
     except ValueError as e:
         logger.error(f"Error while saving feedback: {e}")
@@ -274,7 +395,110 @@ def save_feedback(session: Session, review_id_str: str, feedback_list: list[tupl
 
         raise HTTPException(status_code=404, detail=str(e))
 
-    except Exception:
-        logger.exception("Error occurred while saving feedback.")
+    except Exception as e:
+        logger.exception(f"Error occurred while saving feedback: {e!s}")
         session.rollback()
-        raise
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=500, detail="Failed to save feedback")
+
+
+# -----------------------------------------
+# API Layer Functions (for FastAPI routes)
+# -----------------------------------------
+
+
+async def create_review(session: Session, review_req: ReviewRequest, async_mode: bool = False) -> dict:
+    """
+    API function to create a new code review (either sync or async)
+
+    Args:
+        session: Database session
+        review_req: Review request data
+        async_mode: Whether to process asynchronously (True) or synchronously (False)
+
+    Returns:
+        Dict: Response with either job ID (async) or complete review (sync)
+    """
+    if async_mode:
+        job_id = queue_review_job(session, review_req)
+        return {"jobId": job_id, "status": "queued"}
+    from .llm_engines.ollama_engine import OllamaEngine
+
+    engine = OllamaEngine()
+
+    result = generate_and_save_review(
+        session=session,
+        llm_engine=engine,
+        language_str=review_req.language,
+        sourcecode_str=review_req.sourceCode,
+        diff_str=review_req.diff,
+        filename_str=review_req.fileName,
+        options_dict=review_req.options,
+    )
+
+    return result
+
+
+async def get_review_status(session: Session, job_id: str) -> dict:
+    """
+    API function to get the status of an asynchronous review job
+
+    Args:
+        session: Database session
+        job_id: Job ID to query
+
+    Returns:
+        Dict: Job status and review data if completed
+
+    Raises:
+        HTTPException: If job not found
+    """
+    result = get_job_status(session, job_id)
+    if not result:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found")
+
+    return result
+
+
+async def get_review_by_id(session: Session, review_id: str) -> dict:
+    """
+    API function to get a review by its ID
+
+    Args:
+        session: Database session
+        review_id: Review ID to fetch
+
+    Returns:
+        Dict: Formatted review data
+
+    Raises:
+        HTTPException: If review not found
+    """
+    review = session.query(Reviews).filter(Reviews.review_id == review_id).first()
+    if not review:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail=f"Review with ID {review_id} not found")
+
+    return format_review_response(review)
+
+
+async def submit_feedback(session: Session, review_id: str, feedback_data: list[dict[str, str]]) -> dict:
+    """
+    API function to submit feedback for a review
+
+    Args:
+        session: Database session
+        review_id: Review ID to provide feedback for
+        feedback_data: List of category/feedback pairs
+
+    Returns:
+        Dict: Success response
+    """
+    # Convert the feedback data to the expected format
+    feedback_list = [(item["category"], item["feedback"]) for item in feedback_data]
+
+    return save_feedback(session, review_id, feedback_list)

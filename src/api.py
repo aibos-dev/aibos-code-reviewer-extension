@@ -6,18 +6,23 @@ API Endpoint Definitions
 /v1/jobs - async queue
 """
 
+import json
 import logging
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .database import get_db_session
 from .llm_engines.ollama_engine import OllamaEngine
-from .schemas import ReviewFeedbackRequest, ReviewRequest, ReviewResponse, ReviewResponseCategory
+from .schemas import ReviewFeedbackRequest, ReviewRequest, ReviewResponse
 from .services import cancel_job, generate_and_save_review, get_job_status, queue_review_job, save_feedback
 
 router = APIRouter(prefix="/v1", tags=["reviews"])
 logger = logging.getLogger(__name__)
+
+
+DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 
 
 @router.post("/review", response_model=ReviewResponse)
@@ -36,11 +41,7 @@ def review_code(review_req: ReviewRequest, db_session: Session = Depends(get_db_
             filename_str=review_req.fileName,
             options_dict=review_req.options,
         )
-
-        response_cats = [
-            ReviewResponseCategory(category=cat.category_name, message=cat.message) for cat in review_obj.categories
-        ]
-        return ReviewResponse(reviewId=str(review_obj.review_id), reviews=response_cats)
+        return ReviewResponse(reviewId=review_obj["reviewId"], reviews=review_obj["reviews"])
 
     except Exception:
         logger.exception("Error occurred while performing code review.")
@@ -90,9 +91,14 @@ def get_review_job(jobId: str, db_session: Session = Depends(get_db_session)) ->
     """
     Retrieves job status and results if completed.
     """
-    job_info = get_job_status(db_session, jobId)
+    job_info: dict = get_job_status(db_session, jobId)
     if not job_info:
         raise HTTPException(status_code=404, detail="Job not found.")
+
+    # Log full response for debugging
+    if DEBUG_MODE:
+        logger.debug(f"Full API Response:\n{json.dumps(job_info, indent=4, ensure_ascii=False)}")
+
     return job_info
 
 
