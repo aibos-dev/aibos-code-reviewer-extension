@@ -1,40 +1,31 @@
 """
 Main Entry Point
 ================
-
-FastAPI application startup. Also initializes DB with the new table `review_jobs`.
 """
 
 import logging
 import sys
 
 from fastapi import FastAPI
+
 from .api import router as review_router
 from .database import engine
 from .models_db import Base
 from .schemas import CliArgs
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s : %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s : %(message)s")
 
-# Create tables if they do not already exist (including review_jobs)
+# Create tables if they do not already exist
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="LLM Review API", version="1.0")
-
-# Register routers
 app.include_router(review_router)
 
 
 def main() -> None:
-    """
-    Main function to parse command-line arguments with Tap and start Uvicorn server.
-    """
     try:
-        from tap import Tap  # typed-argument-parser
+        from tap import Tap
     except ImportError:
         logger.exception("Tap module not installed. Please `pip install typed-argument-parser`.")
         sys.exit(1)
@@ -48,12 +39,8 @@ def main() -> None:
     cli_args = CliArgs(host=parsed_args.host, port=parsed_args.port, debug=parsed_args.debug)
 
     import uvicorn
-    uvicorn.run(
-        "src.main:app",
-        host=cli_args.host,
-        port=cli_args.port,
-        reload=cli_args.debug
-    )
+
+    uvicorn.run("src.main:app", host=cli_args.host, port=cli_args.port, reload=cli_args.debug)
 
 
 if __name__ == "__main__":

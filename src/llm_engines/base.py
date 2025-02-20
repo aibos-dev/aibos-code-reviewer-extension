@@ -30,5 +30,5 @@ class BaseLLMEngine(ABC):
         Returns
         -------
         Any
-            The inference result from the LLM.
+            The raw inference (usually text) from the LLM.
         """

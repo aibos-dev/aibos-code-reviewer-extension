@@ -2,8 +2,10 @@
 Ollama Engine Implementation
 ============================
 
-Example using the DeepSeek R1 70B quantized model with Ollama.
-Actual inference may be via subprocess calls or HTTP requests.
+We instruct the LLM to return a JSON list of categories with fields:
+- category
+- message
+Possible categories: [Memory Management, Performance, Null Check, Security, Coding Standard].
 """
 
 import logging
@@ -22,17 +24,17 @@ class OllamaEngine(BaseLLMEngine):
 
     def generate_review(self, prompt_str: str) -> Any:
         """
-        Perform inference using the Ollama CLI or API.
+        Perform inference using the Ollama CLI.
 
         Parameters
         ----------
         prompt_str : str
-            Prompt text for the LLM.
+            A string instructing the LLM to produce JSON with multiple categories.
 
         Returns
         -------
-        Any
-            The inference result from Ollama.
+        str
+            The raw inference result from Ollama (JSON or fallback text).
 
         Raises
         ------
@@ -40,8 +42,6 @@ class OllamaEngine(BaseLLMEngine):
             If Ollama inference fails.
         """
         try:
-            # Example: synchronous CLI call
-            # In production, you might prefer an HTTP API approach.
             command_list = ["ollama", "run", "deepseek-r1:70b", prompt_str]
             completed_process = subprocess.run(command_list, capture_output=True, text=True, check=False)
 
@@ -49,8 +49,8 @@ class OllamaEngine(BaseLLMEngine):
                 logger.error(f"Failed to run Ollama inference: {completed_process.stderr}")
                 raise RuntimeError("Ollama inference failed.")
 
-            result_str = completed_process.stdout.strip()
-            return result_str
+            return completed_process.stdout.strip()
+
         except Exception:
             logger.exception("Error while running Ollama engine.")
             raise

@@ -2,22 +2,27 @@
 Database Table Definitions
 ==========================
 
-Defines tables for PostgreSQL using SQLAlchemy.
-Includes:
-- Reviews, ReviewCategories, ReviewFeedback, Models
-- NEW: ReviewJobs for job queue tracking.
+Defines tables for:
+- ReviewJobs (for async queue)
+- Reviews
+- ReviewCategories
+- ReviewFeedback
+- Models
+
+We allow multiple categories, e.g. 'Memory Management', 'Performance', etc.
 """
 
 import uuid
+
 from sqlalchemy import (
     JSON,
     TIMESTAMP,
     BigInteger,
     Column,
+    Enum,
     ForeignKey,
     String,
     Text,
-    Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
@@ -30,35 +35,25 @@ class ReviewJobs(Base):
     """
     ReviewJobs Table
     ----------------
-    - job_id: Unique ID for the job
+    - job_id: Unique ID
     - status: queued, in_progress, completed, canceled, error
-    - created_at: When the job was created
-    - completed_at: When the job completed or canceled
-    - review_id: (Optional) references the Reviews table
+    - created_at: Timestamp
+    - completed_at: Timestamp when job is done
+    - review_id: references the Reviews table
     """
 
     __tablename__ = "review_jobs"
 
-    job_id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        nullable=False
-    )
+    job_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
     status = Column(
         Enum("queued", "in_progress", "completed", "canceled", "error", name="job_status"),
         nullable=False,
-        default="queued"
+        default="queued",
     )
-    created_at = Column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
-
-    # Link to the Reviews table once the review is complete
     review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=True)
+
     review = relationship("Reviews", back_populates="job")
 
 
@@ -66,14 +61,7 @@ class Reviews(Base):
     """
     Reviews Table
     -------------
-    - review_id: Unique ID for the review
-    - language: Programming language
-    - source_code: Full source code text
-    - diff: Code diff
-    - file_name: Filename
-    - options: JSON for additional options
-    - created_at: Timestamp
-    - model_id: (Optional) references the model used
+    Tracks code reviews, with multiple categories in review_categories.
     """
 
     __tablename__ = "reviews"
@@ -87,7 +75,6 @@ class Reviews(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     model_id = Column(UUID(as_uuid=True), ForeignKey("models.model_id"), nullable=True)
 
-    # One-to-one relationship with ReviewJobs
     job = relationship("ReviewJobs", back_populates="review", uselist=False)
 
     categories = relationship("ReviewCategories", back_populates="review", cascade="all, delete")
@@ -98,11 +85,7 @@ class ReviewCategories(Base):
     """
     ReviewCategories Table
     ----------------------
-    - id
-    - review_id
-    - category_name
-    - message
-    - created_at
+    Each row is one category (e.g. 'Memory Management') with a message.
     """
 
     __tablename__ = "review_categories"
@@ -120,11 +103,10 @@ class ReviewFeedback(Base):
     """
     ReviewFeedback Table
     --------------------
-    - feedback_id
-    - review_id
-    - category_name
-    - user_feedback
-    - created_at
+    - feedback_id: PK
+    - review_id: FK to Reviews
+    - category_name: e.g. "Memory Management"
+    - user_feedback: e.g., "Good" or "Bad"
     """
 
     __tablename__ = "review_feedback"
@@ -142,12 +124,7 @@ class Models(Base):
     """
     Models Table
     ------------
-    - model_id
-    - name
-    - version
-    - hosted_by
-    - description
-    - created_at
+    For storing model metadata if needed.
     """
 
     __tablename__ = "models"
