@@ -53,8 +53,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     && cd /usr/local/Python-$PYTHON_VERSION \
     && ./configure --enable-optimizations \
     && make install \
-    && rm /usr/local/Python-$PYTHON_VERSION.tar.xz \
-    && cd /usr/local/Python-$PYTHON_VERSION \
+    && rm -rf /usr/local/Python-$PYTHON_VERSION.tar.xz \
     && ln -fs /usr/local/Python-$PYTHON_VERSION/python /usr/bin/python \
     #
     # Install Node.js using NodeSource
@@ -64,13 +63,14 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
     # Verify installations
     && node -v && npm -v \
     #
-    # Install Ollama
+    # Install Ollama properly
     && curl -fsSL https://ollama.com/install.sh | sh \
+    && ln -s /root/.ollama/bin/ollama /usr/local/bin/ollama \
     #
-    # Cleanup
+    # Cleanup to reduce image size
     && apt-get autoremove -y \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /usr/local/src/* /tmp/*
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/* /tmp/*
 
 # Copy uv from the official image
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
@@ -97,7 +97,7 @@ RUN echo "export PATH=/usr/local/nvm/versions/node/v$NODE_VERSION/bin:\$PATH" >>
 
 # Copy startup script for Ollama model download
 COPY sh/download_models.sh /usr/local/bin/download_models.sh
-# RUN chmod +x /usr/local/bin/download_models.sh
+RUN chmod +x /usr/local/bin/download_models.sh
 
-# Start Ollama and download the model at runtime
-CMD ollama serve & sleep 5 && download_models.sh && exec /bin/bash
+# Start Ollama and ensure model download
+CMD ["sh", "-c", "ollama serve & sleep 5 && /usr/local/bin/download_models.sh && tail -f /dev/null"]
