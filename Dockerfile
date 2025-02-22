@@ -18,7 +18,7 @@ ENV TZ=Asia/Tokyo \
     NVM_DIR="/usr/local/nvm" \
     NODE_VERSION=$NODE_VERSION \
     PATH="/usr/local/nvm/versions/node/v$NODE_VERSION/bin:$PATH" \
-    OLLAMA_MODEL="deepseek-r1-70b"
+    OLLAMA_MODEL="deepseek-r1:70b"
 
 WORKDIR /tmp/
 
