@@ -260,11 +260,15 @@ def get_job_status(session: Session, job_id: str) -> dict | None:
     if not job:
         return None
 
-    resp = {"jobId": str(job.job_id), "status": job.status}
+    resp = {
+        "jobId": str(job.job_id),
+        "status": job.status,
+        "reviewId": str(job.review_id) if job.review_id else None,  # Include reviewId
+    }
+
     if job.status == "completed" and job.review_id:
         review = session.query(Reviews).filter(Reviews.review_id == job.review_id).first()
         if review:
-            # Use the formatter to get consistent response structure
             formatted_response = format_review_response(review)
             resp["reviews"] = formatted_response["reviews"]
 
