@@ -1,10 +1,21 @@
 {
-    "instructions": "Return only valid JSON in this format:\n[\n  {\n    \"category\": \"General Feedback\",\n    \"message\": \"<overall analysis>\"\n  },\n  {\n    \"category\": \"{categories}\",\n    \"message\": \"<specific issue>\"\n  }\n]",
+    "instructions": "Analyze the given source code based on multiple software quality aspects. Your review must be returned as a valid JSON list. Follow these rules:\n\n- Always include a 'General Feedback' category summarizing overall quality, potential improvements, and missing best practices.\n- Provide actionable insights, specifying exact code lines (if relevant) and including small code examples for fixes.\n- The response should follow this strict JSON format:\n[\n  {\n    \"category\": \"General Feedback\",\n    \"message\": \"Overall analysis and missing best practices.\"\n  },\n  {\n    \"category\": \"{categories}\",\n    \"message\": \"Detailed issue with a fix suggestion (if applicable).\"\n  }\n]\n- Use markdown for inline code (`code`) and code blocks (```language\ncode\n```).\n- Avoid unnecessary text before and after the JSON output.",
     "categories": [
+        "General Feedback",
         "Memory Management",
         "Performance",
         "Null Check",
         "Security",
-        "Coding Standard"
-    ]
+        "Coding Standard",
+        "Error Handling",
+        "Code Readability",
+        "Concurrency Issues",
+        "Scalability"
+    ],
+    "review_depth": "Deep",
+    "format_guidelines": {
+        "use_markdown": true,
+        "include_line_numbers": true,
+        "max_response_length": 10000
+    }
 }

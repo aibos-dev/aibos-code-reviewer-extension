@@ -42,15 +42,35 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
     """
 
     # Extract values from config
-    categories_str = ", ".join(CONFIG["categories"])
-    instructions = CONFIG["instructions"].replace("{categories}", categories_str)
+    categories_str = ", ".join(CONFIG.get("categories", []))  # Ensure categories exist
+    instructions = CONFIG.get("instructions", "").replace("{categories}", categories_str)
+
+    # Format guidelines with safe default values
+    format_guidelines = CONFIG.get("format_guidelines", {})  # Ensure it exists
+    use_markdown = format_guidelines.get("use_markdown", False)
+    include_line_numbers = format_guidelines.get("include_line_numbers", False)
+    max_length = format_guidelines.get("max_response_length", 10000)
+
+    # Generate additional formatting instructions
+    formatting_instructions = []
+    if use_markdown:
+        formatting_instructions.append("- Use markdown for inline code (`code`) and code blocks.")
+    if include_line_numbers:
+        formatting_instructions.append("- Reference specific line numbers where applicable.")
+
+    formatting_str = "\n".join(formatting_instructions) if formatting_instructions else ""
 
     base_prompt = (
-        f"Please review the following {language} code:\n\n"
-        f"{source_code}\n\n"
-        f"Diff:\n{diff or ''}\n\n"
-        f"Categories of interest: {categories_str}.\n\n"
-        f"{instructions}"
+        f"### Code Review Request ({CONFIG.get('review_depth', 'Deep')} Analysis)\n"
+        f"#### Language: {language}\n\n"
+        f"```{language}\n{source_code}\n```\n\n"
+        f"#### Diff:\n{diff or 'No diff provided.'}\n\n"
+        f"### Categories of Interest:\n{categories_str}\n\n"
+        f"### Review Guidelines:\n"
+        f"{instructions}\n\n"
+        f"{formatting_str}\n"
+        f"- Ensure response length does not exceed {max_length} characters.\n"
+        f"- Return only valid JSON as output."
     )
 
     return base_prompt
