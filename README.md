@@ -67,10 +67,6 @@ POSTGRES_PORT=5432
 ```bash
 uv sync
 ```
-#### **Using pip:**
-```bash
-pip install -r requirements.txt
-```
 
 ### **4. Prepare the Database**
 Ensure **PostgreSQL is running**, then create the database:
@@ -225,14 +221,6 @@ ollama list
 ## **Running Tests**
 ```bash
 pytest --maxfail=1 --disable-warnings -q
-```
-
----
-
-## **Docker Usage (Optional)**
-```bash
-docker build -t llm-review-api .
-docker run -it --rm -p 8000:8000 llm-review-api
 ```
 
 ---
