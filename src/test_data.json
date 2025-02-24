@@ -54,7 +54,7 @@
     },
     "B-4": {
         "description": "Invalid jobId format (Error)",
-        "endpoint": "GET /v1/jobs/invalid123"
+        "endpoint": "GET /v1/jobs/4327e32f-a098-4c7f-b2ad-ce79232752ed"
     },
     "C-1": {
         "description": "Cancel a queued job",
