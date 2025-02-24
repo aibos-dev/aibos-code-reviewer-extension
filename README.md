@@ -1,4 +1,4 @@
-# LLM Code Review API (v0.3)
+# LLM Code Review API
 
 This repository hosts a **FastAPI** application supporting **both synchronous** code reviews (legacy `/v1/review` model) and **asynchronous** job-based reviews (new `/v1/jobs` model).
 
