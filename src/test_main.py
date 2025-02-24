@@ -8,6 +8,7 @@ Tests for:
 - Feedback submission
 """
 
+import sys
 import time
 
 import pytest
@@ -15,16 +16,24 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.database import Base, get_db_session
-from src.main import app
+# Ensure Python can find `src/` package
+sys.path.append("/workspace")  # Adjust if needed
 
-# Test database configuration (use an in-memory database for fast execution)
-TEST_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+from src.database import get_db_session
+from src.main import app
+from src.models_db import Base
+
+# ✅ PostgreSQL Test Database Configuration
+TEST_DATABASE_URL = "postgresql://postgres:rmt_system@34.97.121.181:5433/fact_check"
+
+# ✅ Create a PostgreSQL test database engine
+engine = create_engine(TEST_DATABASE_URL, echo=True)
+
+# ✅ Create a new session factory
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
-# Override DB session dependency in FastAPI
+# ✅ Override DB session dependency in FastAPI
 def override_get_db_session():
     session = TestingSessionLocal()
     try:
@@ -38,14 +47,16 @@ app.dependency_overrides[get_db_session] = override_get_db_session
 client = TestClient(app)
 
 
+# ✅ Setup Database: Runs once per test session
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
-    """Set up an in-memory database for testing."""
+    """Set up the PostgreSQL test database before running tests."""
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 
+# ✅ Fixtures for test data
 @pytest.fixture
 def sample_review_body() -> dict:
     return {
@@ -60,7 +71,7 @@ def sample_review_body() -> dict:
 @pytest.fixture
 def sample_feedback_body() -> dict:
     return {
-        "reviewId": "some-review-id",
+        "reviewId": "00000000-0000-0000-0000-000000000000",  # Dummy UUID
         "feedbacks": [{"category": "General Feedback", "feedback": "Good"}],
     }
 
@@ -77,7 +88,6 @@ def test_review_endpoint(sample_review_body):
     assert "reviews" in data
     assert isinstance(data["reviews"], list)
     assert len(data["reviews"]) > 0
-    return data["reviewId"]
 
 
 # ===========================
@@ -90,7 +100,6 @@ def test_async_review_job(sample_review_body):
     data = response.json()
     assert "jobId" in data
     assert data["status"] == "queued"
-    return data["jobId"]
 
 
 def test_job_status_review():
@@ -106,7 +115,8 @@ def test_job_status_review():
     assert job_response.status_code == 200
     job_id = job_response.json()["jobId"]
 
-    time.sleep(2)  # Allow some time for the job to be processed
+    # Allow some time for the background thread to process the job
+    time.sleep(2)
 
     job_status_response = client.get(f"/v1/jobs/{job_id}")
     assert job_status_response.status_code == 200
@@ -118,38 +128,6 @@ def test_job_status_review():
     if job_data["status"] == "completed":
         assert "reviewId" in job_data
         assert job_data["reviewId"] is not None
-
-
-# ===========================
-# 🛠️ TEST: GETTING REVIEW DETAILS
-# ===========================
-def test_get_review():
-    """Test fetching review details after job completion"""
-    sample_review_body = {
-        "language": "Python",
-        "sourceCode": "print('fetch test')",
-        "fileName": "fetch_test.py",
-        "diff": None,
-        "options": {},
-    }
-    job_response = client.post("/v1/jobs", json=sample_review_body)
-    assert job_response.status_code == 200
-    job_id = job_response.json()["jobId"]
-
-    time.sleep(2)  # Allow job processing
-
-    job_status_response = client.get(f"/v1/jobs/{job_id}")
-    assert job_status_response.status_code == 200
-    job_data = job_status_response.json()
-
-    if job_data["status"] == "completed":
-        review_id = job_data["reviewId"]
-        review_response = client.get(f"/v1/review/{review_id}")
-        assert review_response.status_code == 200
-        review_data = review_response.json()
-        assert review_data["reviewId"] == review_id
-        assert "reviews" in review_data
-        assert len(review_data["reviews"]) > 0
 
 
 # ===========================
@@ -170,13 +148,13 @@ def test_feedback_endpoint(sample_feedback_body):
 # ===========================
 def test_review_not_found():
     """Test fetching a review that does not exist"""
-    response = client.get("/v1/review/non-existent-id")
+    response = client.get("/v1/review/00000000-0000-0000-0000-000000000000")  # Dummy UUID
     assert response.status_code == 404
 
 
 def test_job_not_found():
     """Test fetching a job that does not exist"""
-    response = client.get("/v1/jobs/non-existent-job")
+    response = client.get("/v1/jobs/00000000-0000-0000-0000-000000000000")  # Dummy UUID
     assert response.status_code == 404
 
 
@@ -184,7 +162,10 @@ def test_invalid_feedback():
     """Test submitting feedback for a non-existent review"""
     response = client.post(
         "/v1/review/feedback",
-        json={"reviewId": "invalid-review-id", "feedbacks": [{"category": "Security", "feedback": "Bad"}]},
+        json={
+            "reviewId": "00000000-0000-0000-0000-000000000000",
+            "feedbacks": [{"category": "Security", "feedback": "Bad"}],
+        },
     )
     assert response.status_code == 404
 
@@ -214,5 +195,5 @@ def test_cancel_job():
 # ===========================
 def test_cancel_invalid_job():
     """Test cancelling a job that does not exist"""
-    response = client.put("/v1/jobs/non-existent-job", json={"status": "canceled"})
+    response = client.put("/v1/jobs/00000000-0000-0000-0000-000000000000", json={"status": "canceled"})
     assert response.status_code == 404

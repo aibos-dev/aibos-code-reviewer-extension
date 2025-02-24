@@ -1,0 +1,10 @@
+{
+    "instructions": "Return only valid JSON in this format:\n[\n  {\n    \"category\": \"General Feedback\",\n    \"message\": \"<overall analysis>\"\n  },\n  {\n    \"category\": \"{categories}\",\n    \"message\": \"<specific issue>\"\n  }\n]",
+    "categories": [
+        "Memory Management",
+        "Performance",
+        "Null Check",
+        "Security",
+        "Coding Standard"
+    ]
+}

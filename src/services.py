@@ -27,38 +27,29 @@ logger = logging.getLogger(__name__)
 # For async jobs
 job_queue = Queue()
 
-STANDARD_CATEGORIES = ["Memory Management", "Performance", "Null Check", "Security", "Coding Standard"]
 DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
+# Load config.json once at module level
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
+
+with open(CONFIG_FILE, encoding="utf-8") as f:
+    CONFIG = json.load(f)
 
 
 def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
     """
     Provide a prompt that instructs the LLM to return JSON with multiple categories.
-    We mention 5 standard categories, but the LLM can still produce others.
+    Uses a JSON config file to define categories and instructions dynamically.
     """
 
-    instructions = (
-        "Return only valid JSON in this format, ensuring that 'General Feedback' is always included alongside other categories. "
-        "The message can contain code snippets for suggested fixes:\n"
-        "[\n"
-        "  {\n"
-        '    "category": "General Feedback",\n'
-        '    "message": "<overall analysis and summary of the review>"\n'
-        "  },\n"
-        "  {\n"
-        '    "category": "(one of Memory Management, Performance, Null Check, Security, Coding Standard, or any other)",\n'
-        '    "message": "<specific issue and possible fix>"\n'
-        "  },\n"
-        "  ...\n"
-        "]\n"
-        "Do not include extra text."
-    )
+    # Extract values from config
+    categories_str = ", ".join(CONFIG["categories"])
+    instructions = CONFIG["instructions"].replace("{categories}", categories_str)
 
     base_prompt = (
         f"Please review the following {language} code:\n\n"
         f"{source_code}\n\n"
         f"Diff:\n{diff or ''}\n\n"
-        f"Categories of interest: Memory Management, Performance, Null Check, Security, Coding Standard, or others.\n\n"
+        f"Categories of interest: {categories_str}.\n\n"
         f"{instructions}"
     )
 
