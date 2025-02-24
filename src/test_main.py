@@ -24,7 +24,7 @@ from src.main import app
 from src.models_db import Base
 
 # ✅ PostgreSQL Test Database Configuration
-TEST_DATABASE_URL = "postgresql://postgres:rmt_system@34.97.121.181:5433/fact_check"
+TEST_DATABASE_URL = "postgresql://postgres:rmt_system@34.97.121.181:5433/fact_check_test"
 
 # ✅ Create a PostgreSQL test database engine
 engine = create_engine(TEST_DATABASE_URL, echo=True)
