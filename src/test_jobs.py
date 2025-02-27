@@ -40,7 +40,7 @@ def prepare_csv_report():
 def job_id_fixture(load_test_data):
     """Creates a job once and reuses its ID for multiple tests."""
     data = load_test_data["A-1"]
-    response = client.post("/v1/jobs", json=data["request_body"])
+    response = client.post("/v2/jobs", json=data["request_body"])
     assert response.status_code in [200, 201], f"Job creation failed: {response.text}"
     return response.json().get("jobId")
 

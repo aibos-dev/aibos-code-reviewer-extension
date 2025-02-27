@@ -1,6 +1,6 @@
 # LLM Code Review API
 
-This repository hosts a **FastAPI** application supporting **both synchronous** code reviews (legacy `/v1/review` model) and **asynchronous** job-based reviews (new `/v1/jobs` model).
+This repository hosts a **FastAPI** application supporting **both synchronous** code reviews (legacy `/v2/review` model) and **asynchronous** job-based reviews (new `/v2/jobs` model).
 
 ## **Features**
 - **Hybrid Synchronous & Asynchronous** code reviews
@@ -123,33 +123,7 @@ ollama list
 
 ## **API Endpoints**
 
-### **Synchronous Code Review**
-
-#### **1. POST `/v1/review`**  
-**Request Body:**
-```json
-{
-  "language": "Python",
-  "sourceCode": "print('Hello World')",
-  "fileName": "hello.py",
-  "diff": null,
-  "options": {}
-}
-```
-**Response:**
-```json
-{
-  "reviewId": "<uuid>",
-  "reviews": [
-    {
-      "category": "General Feedback",
-      "message": "Some review text..."
-    }
-  ]
-}
-```
-
-#### **2. POST `/v1/review/feedback`**  
+#### **1. POST `/v2/review/feedback`**  
 **Request Body:**
 ```json
 {
@@ -169,7 +143,7 @@ ollama list
 
 ### **Asynchronous Job-Based Review**
 
-#### **1. POST `/v1/jobs`**  
+#### **1. POST `/v2/jobs`**  
 **Request Body:**
 ```json
 {
@@ -184,11 +158,11 @@ ollama list
 {
   "jobId": "<uuid>",
   "status": "queued",
-  "message": "Job accepted. Check status via GET /v1/jobs/<jobId>"
+  "message": "Job accepted. Check status via GET /v2/jobs/<jobId>"
 }
 ```
 
-#### **2. GET `/v1/jobs/{jobId}`**  
+#### **2. GET `/v2/jobs/{jobId}`**  
 **Response (when completed):**
 ```json
 {
@@ -200,7 +174,7 @@ ollama list
 }
 ```
 
-#### **3. PUT `/v1/jobs/{jobId}`**  
+#### **3. PUT `/v2/jobs/{jobId}`**  
 **Request Body:**
 ```json
 {

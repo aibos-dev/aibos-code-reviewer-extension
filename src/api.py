@@ -2,8 +2,8 @@
 API Endpoint Definitions
 ========================
 
-/v1/review, /v1/review/feedback - synchronous
-/v1/jobs - async queue
+/v2/review, /v2/review/feedback - synchronous
+/v2/jobs - async queue
 """
 
 import json
@@ -18,7 +18,7 @@ from .llm_engines.ollama_engine import OllamaEngine
 from .schemas import ReviewFeedbackRequest, ReviewRequest, ReviewResponse
 from .services import cancel_job, generate_and_save_review, get_job_status, queue_review_job, save_feedback
 
-router = APIRouter(prefix="/v1", tags=["reviews"])
+router = APIRouter(prefix="/v2", tags=["reviews"])
 logger = logging.getLogger(__name__)
 
 
@@ -79,7 +79,7 @@ def create_review_job(review_req: ReviewRequest, db_session: Session = Depends(g
         return {
             "jobId": job_id,
             "status": "queued",
-            "message": f"Job accepted. Check status via GET /v1/jobs/{job_id}",
+            "message": f"Job accepted. Check status via GET /v2/jobs/{job_id}",
         }
     except Exception:
         logger.exception("Error while creating job.")
