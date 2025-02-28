@@ -99,6 +99,8 @@ python src/main.py --host 0.0.0.0 --port 8000 --debug True
 
 Now your API is live at `http://localhost:8000`.
 
+The docs are also available at `http://localhost:8000/docs` .
+
 ---
 
 ## **Development Environment Setup with Dev Containers**
@@ -256,6 +258,39 @@ ollama list
 - **CPU Memory Usage:** 2-4GB depending on token size
 - **GPU Memory Usage:** Peaks at ~90% for large inputs
 
+---
+
+## **Feedback Extraction**
+**Command Line Arguments:**
+
+- **--output**: Specify output filename
+- **--days**: Number of days of data to extract
+- **--format**: Choose between CSV or JSON output
+- **--include-code**: Option to include source code (warning: large files)
+
+---
+
+### **Usage Examples**
+
+### **Basic usage (exports last 30 days of feedback to CSV):**
+```bash
+python feedback_extractor.py
+```
+
+### **Export last 90 days of feedback to a specific file:**
+```bash
+python feedback_extractor.py --days 90 --output quarterly_feedback.csv
+```
+
+### **Export to JSON format:**
+```bash
+python feedback_extractor.py --format json --output feedback_data.json
+```
+
+### **Include source code in the export (caution: large file):**
+```bash
+python feedback_extractor.py --include-code
+```
 ---
 
 ## **Error Handling & Response Codes**
