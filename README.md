@@ -19,7 +19,7 @@ This repository hosts a **FastAPI** application supporting **asynchronous** job-
 1. [Requirements](#requirements)
 2. [Installation & Setup](#installation--setup)
    - [1. Clone Repo](#1-clone-repo)
-   - [2. Create ](#2-create-env-file)[`.env`](#2-create-env-file)[ File](#2-create-env-file)
+   - [2. Create .env File](#2-create-env-file)
    - [3. Install Dependencies](#3-install-dependencies)
    - [4. Prepare the Database](#4-prepare-the-database)
    - [5. Run the App](#5-run-the-app)
@@ -28,13 +28,47 @@ This repository hosts a **FastAPI** application supporting **asynchronous** job-
 5. [API Endpoints](#api-endpoints)
    - [Synchronous Code Review](#synchronous-code-review)
    - [Asynchronous Job-Based Review](#asynchronous-job-based-review)
-6. [Sample ](#sample-curl-commands)[`curl`](#sample-curl-commands)[ Commands](#sample-curl-commands)
+6. [Sample curl Commands](#sample-curl-commands)
 7. [Local Development](#local-development)
    - [Running Tests](#running-tests)
    - [Docker Usage (Optional)](#docker-usage-optional)
-8. [Downloading and Managing LLM Models](#downloading-and-managing-llm-models)
-9. [Performance Benchmarks](#performance-benchmarks)
-10. [FAQ / Troubleshooting](#faq--troubleshooting)
+8. [Performance Benchmarks](#performance-benchmarks)
+9. [FAQ / Troubleshooting](#faq--troubleshooting)
+
+---
+
+## **Getting Started in 5 Minutes** 🚀
+
+1. **Clone & Setup:**
+   ```bash
+   git clone https://github.com/aibos-dev/aibos-code-reviewer-extension.git
+   cd aibos-code-reviewer-extension
+   ```
+
+2. **Configure & Run:**
+   ```bash
+   # Create minimal .env file
+   echo "POSTGRES_USER=postgres\nPOSTGRES_PASSWORD=postgres\nPOSTGRES_DB=llm_review_db\nPOSTGRES_HOST=localhost\nPOSTGRES_PORT=5432" > .env
+   
+   # Install dependencies
+   uv sync
+   
+   # Create database
+   psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE llm_review_db;"
+   
+   # Run database migrations
+   alembic upgrade head
+   
+   # Start the API
+   uvicorn src.main:app --reload
+   ```
+
+3. **Test with a simple API call:**
+   ```bash
+   curl -X POST "http://localhost:8000/v2/jobs" \
+     -H "Content-Type: application/json" \
+     -d '{"language":"Python","sourceCode":"print(\"Hello, world!\")","diff":"","options":{}}'
+   ```
 
 ---
 
@@ -57,7 +91,7 @@ git clone https://github.com/aibos-dev/aibos-code-reviewer-extension.git
 cd aibos-code-reviewer-extension
 ```
 
-### **2. Create ************`.env`************ File**
+### **2. Create .env File**
 
 Create a `.env` file in the root directory:
 
@@ -85,6 +119,12 @@ Ensure **PostgreSQL is running**, then create the database:
 
 ```bash
 psql -U postgres -h localhost -p 5432 -c "CREATE DATABASE llm_review_db;"
+```
+
+Run the database migrations:
+
+```bash
+alembic upgrade head
 ```
 
 ### **5. Run the App**
@@ -127,8 +167,7 @@ The docs are also available at `http://localhost:8000/docs` .
 
 ## **Downloading and Managing LLM Models**
 
-### **1. Downloading the DeepSeek Model**
-### **1. Introducing a New Model**
+### **1. Adding a Custom Model to Ollama**
 
 To introduce a new model to Ollama, follow these steps:
 
@@ -137,7 +176,20 @@ To introduce a new model to Ollama, follow these steps:
 3. Update `llm_engines/ollama_engine.py` to include the new model.
 4. Restart the API service to apply changes.
 
-### \*\*2. Managing the prompt in the \*\***`config.json`**
+Default models that come pre-installed with Ollama:
+- `llama2`
+- `codellama`
+- `mistral`
+- `orca-mini`
+
+### **2. Downloading the DeepSeek Model**
+
+Run the following command to fetch the required LLM model:
+```bash
+./download_model.sh
+```
+
+### **3. Managing the prompt in the `config.json`**
 
 The prompt used for code reviews can be customized in the `config.json` file:
 
@@ -150,14 +202,7 @@ The prompt used for code reviews can be customized in the `config.json` file:
 
 Modify these values as needed.
 
----
-
-Run the following command to fetch the required LLM model:
-```bash
-./download_model.sh
-```
-
-### **2. Listing Available Models in Ollama**
+### **4. Listing Available Models in Ollama**
 Check available models:
 ```bash
 ollama list
@@ -315,4 +360,3 @@ See the documentation for additional troubleshooting tips.
 ---
 
 **Happy Coding!** Contributions, issues, and PRs are welcome.
-
