@@ -1,9 +1,6 @@
 """
 Pydantic Schema Definitions
 ===========================
-
-Defines schemas for requests and responses in FastAPI endpoints.
-Also shows an example of Tap + Pydantic usage for CLI argument validation.
 """
 
 from typing import Any
@@ -16,7 +13,7 @@ class ReviewRequest(BaseModel):
     Input schema for the review API.
     """
 
-    language: str = Field(..., description="Programming language of the source code")
+    language: str = Field(..., description="Programming language")
     sourceCode: str = Field(..., description="Full source code text")
     fileName: str | None = Field(None, description="File name")
     diff: str | None = Field(None, description="Diff information")
@@ -34,7 +31,7 @@ class ReviewResponseCategory(BaseModel):
 
 class ReviewResponse(BaseModel):
     """
-    Output schema for the review API.
+    Output schema for the synchronous review API.
     """
 
     reviewId: str
@@ -57,9 +54,6 @@ class ReviewFeedbackRequest(BaseModel):
 
     reviewId: str
     feedbacks: list[FeedbackItem]
-
-
-# === Example: CLI argument validation with Tap + pydantic ===
 
 
 class CliArgs(BaseModel):

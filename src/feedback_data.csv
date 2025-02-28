@@ -1,0 +1,997 @@
+feedback_id,review_id,category_name,user_feedback,feedback_created_at,language,file_name,review_created_at,category_message,job_id,job_status,source_code,diff
+14,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-28 06:37:20.236537+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,Using eval() is dangerous due to potential code injection risks. Consider replacing it with safer operations.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+14,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-28 06:37:20.236537+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,The hardcoded secret key is a security risk. It should be retrieved from a secure environment variable or configuration.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+12,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 12:49:35.563310+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,The hardcoded secret key is a security risk. It should be retrieved from a secure environment variable or configuration.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+12,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 12:49:35.563310+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,Using eval() is dangerous due to potential code injection risks. Consider replacing it with safer operations.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+10,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 09:57:27.297497+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,Using eval() is dangerous due to potential code injection risks. Consider replacing it with safer operations.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+10,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 09:57:27.297497+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,The hardcoded secret key is a security risk. It should be retrieved from a secure environment variable or configuration.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+8,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 09:54:59.912323+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,The hardcoded secret key is a security risk. It should be retrieved from a secure environment variable or configuration.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+8,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 09:54:59.912323+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,Using eval() is dangerous due to potential code injection risks. Consider replacing it with safer operations.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+6,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 09:53:04.038137+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,The hardcoded secret key is a security risk. It should be retrieved from a secure environment variable or configuration.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+6,b905777f-a154-4ea0-b2e3-af67e92b41e2,Security,Bad,2025-02-24 09:53:04.038137+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,Using eval() is dangerous due to potential code injection risks. Consider replacing it with safer operations.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+1,b905777f-a154-4ea0-b2e3-af67e92b41e2,General Feedback,Good,2025-02-22 09:17:35.551114+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,"The code has shown improvement with added error handling for JSON loading and secure password storage using hashing. However, several issues remain such as the use of eval(), a hardcoded secret key, and a NoneType error that need to be addressed.",,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"
+2,b905777f-a154-4ea0-b2e3-af67e92b41e2,Coding Standard,Bad,2025-02-22 09:17:35.551114+00:00,Python,security_risk.py,2025-02-22 09:15:49.629164+00:00,The NoneType error in the expression x + 1 needs to be fixed by properly initializing x before use.,,,"import os
+import json
+
+def load_config():
+    """"""Loads configuration from a file but lacks error handling.""""""
+    with open('config.json', 'r') as f:
+        return json.load(f)
+
+def calculate(a, b):
+    """"""Performs division but does not check for division by zero.""""""
+    return a / b
+
+class User:
+    def __init__(self, name, password):
+        """"""Stores user credentials insecurely.""""""
+        self.name = name
+        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
+
+    def authenticate(self, password):
+        """"""Compares passwords directly, vulnerable to timing attacks.""""""
+        return self.password == password
+
+def main():
+    """"""Main function with potential issues.""""""
+    x = None
+    print(x + 1)  # ⚠️ TypeError: NoneType + int
+
+    secret_key = ""hardcoded_secret""  # ⚠️ Security issue: Hardcoded credentials
+    eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+    
+    try:
+        result = calculate(10, 0)
+    except ZeroDivisionError:
+        result = ""Error: Division by zero.""
+    print(result)
+
+    user = User(""admin"", ""password123"")
+    print(user.authenticate(""password123""))
+
+if __name__ == ""__main__"":
+    main()
+","--- security_risk.py
++++ security_risk.py (modified)
+@@ -4,7 +4,9 @@
+ def load_config():
+     """"""Loads configuration from a file but lacks error handling.""""""
+     with open('config.json', 'r') as f:
+-        return json.load(f)
++        try:
++            return json.load(f)
++        except json.JSONDecodeError:
++            return {}  # ✅ Fixed: Added error handling
+
+ def calculate(a, b):
+     """"""Performs division but does not check for division by zero.""""""
+@@ -13,7 +15,10 @@
+     return a / b
+
+ class User:
+-    def __init__(self, name, password):
++    def __init__(self, name, password_hash):
+         """"""Stores user credentials securely.""""""
+         self.name = name
+-        self.password = password  # ⚠️ Storing passwords in plaintext is insecure!
++        self.password_hash = password_hash  # ✅ Fixed: Using hashed passwords
+
+     def authenticate(self, password):
++        """"""Checks password securely using hashing.""""""
++        import hashlib
++        return hashlib.sha256(password.encode()).hexdigest() == self.password_hash  # ✅ Improved security
+
+ def main():
+     """"""Main function with potential issues.""""""
+@@ -28,7 +35,7 @@
+     eval(""2+2"")  # ⚠️ Using eval() is dangerous due to code injection risks
+     
+     try:
+-        result = calculate(10, 0)
++        result = calculate(10, 5)  # ✅ Fixed: Avoid division by zero
+     except ZeroDivisionError:
+         result = ""Error: Division by zero.""
+     print(result)
+"

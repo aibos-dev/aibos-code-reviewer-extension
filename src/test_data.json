@@ -1,0 +1,141 @@
+{
+    "A-1": {
+        "description": "Minimal required fields (Normal)",
+        "endpoint": "POST /v2/jobs",
+        "request_body": {
+            "language": "Python",
+            "sourceCode": "print('Hello World')"
+        }
+    },
+    "A-2": {
+        "description": "All fields included (Normal)",
+        "endpoint": "POST /v2/jobs",
+        "request_body": {
+            "language": "C++",
+            "sourceCode": "#include <iostream>\nint main(){ std::cout << \"Hello\"; }",
+            "fileName": "main.cpp",
+            "diff": "+ Added main function\n- Removed old code",
+            "options": {
+                "level": "function",
+                "analysisDepth": 2
+            }
+        }
+    },
+    "A-3": {
+        "description": "Missing language (Error)",
+        "endpoint": "POST /v2/jobs",
+        "request_body": {
+            "sourceCode": "print('...')"
+        }
+    },
+    "A-4": {
+        "description": "Missing sourceCode (Error)",
+        "endpoint": "POST /v2/jobs",
+        "request_body": {
+            "language": "C++"
+        }
+    },
+    "A-5": {
+        "description": "JSON parse error (Error)",
+        "endpoint": "POST /v2/jobs",
+        "raw_data": "{ \"language\": \"C++\", \"sourceCode\": \"int main() {\"  // missing bracket"
+    },
+    "B-1": {
+        "description": "Job status still queued or in_progress",
+        "endpoint": "GET /v2/jobs/{jobId}"
+    },
+    "B-2": {
+        "description": "Retrieve completed job results",
+        "endpoint": "GET /v2/jobs/{jobId}"
+    },
+    "B-3": {
+        "description": "Nonexistent jobId (Error)",
+        "endpoint": "GET /v2/jobs/123e4567-e89b-12d3-a456-426614174000"
+    },
+    "B-4": {
+        "description": "Invalid jobId format (Error)",
+        "endpoint": "GET /v2/jobs/4327e32f-a098-4c7f-b2ad-ce79232752ed"
+    },
+    "C-1": {
+        "description": "Cancel a queued job",
+        "endpoint": "PUT /v2/jobs/{jobId}",
+        "request_body": {
+            "status": "canceled"
+        }
+    },
+    "C-2": {
+        "description": "Cancel an in_progress job",
+        "endpoint": "PUT /v2/jobs/{jobId}",
+        "request_body": {
+            "status": "canceled"
+        }
+    },
+    "C-3": {
+        "description": "Cancel already completed/canceled job (Error)",
+        "endpoint": "PUT /v2/jobs/{jobId}",
+        "request_body": {
+            "status": "canceled"
+        }
+    },
+    "C-4": {
+        "description": "Invalid status update (Error)",
+        "endpoint": "PUT /v2/jobs/{jobId}",
+        "request_body": {
+            "status": "invalidStatus"
+        }
+    },
+    "C-5": {
+        "description": "Nonexistent jobId (Error)",
+        "endpoint": "PUT /v2/jobs/123e4567-e89b-12d3-a456-426614174000",
+        "request_body": {
+            "status": "canceled"
+        }
+    },
+    "D-1": {
+        "description": "Submit feedback for completed review",
+        "endpoint": "POST /v2/review/feedback",
+        "request_body": {
+            "reviewId": "{reviewId}",
+            "feedbacks": [
+                {
+                    "category": "Performance",
+                    "feedback": "Good"
+                },
+                {
+                    "category": "Security",
+                    "feedback": "Bad"
+                }
+            ]
+        }
+    },
+    "D-2": {
+        "description": "Nonexistent reviewId (Error)",
+        "endpoint": "POST /v2/review/feedback",
+        "request_body": {
+            "reviewId": "123e4567-e89b-12d3-a456-426614174000",
+            "feedbacks": [
+                {
+                    "category": "Performance",
+                    "feedback": "Good"
+                }
+            ]
+        }
+    },
+    "D-3": {
+        "description": "JSON parse error in feedback (Error)",
+        "endpoint": "POST /v2/review/feedback",
+        "raw_data": "{ \"reviewId\": \"abcd\", \"feedbacks\": [ { \"category\": \"X\", \"feedback\": \"Y\" } // missing bracket"
+    },
+    "D-4": {
+        "description": "Missing required fields in feedbacks (Error)",
+        "endpoint": "POST /v2/review/feedback",
+        "request_body": {
+            "reviewId": "{reviewId}",
+            "feedbacks": [
+                {
+                    "category": "Null Check"
+                }
+            ]
+        }
+    }
+}

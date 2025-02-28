@@ -2,39 +2,62 @@
 Database Table Definitions
 ==========================
 
-Defines tables for PostgreSQL using SQLAlchemy.
-The schema follows "LLM Code Review System - Database Schema Documentation".
+Defines tables for:
+- ReviewJobs (async queue)
+- Reviews
+- ReviewCategories
+- ReviewFeedback
+- Models
 """
 
 import uuid
 
-from sqlalchemy import (
-    JSON,
-    TIMESTAMP,
-    Column,
-    ForeignKey,
-    String,
-    Text,
-)
-from sqlalchemy.dialects.postgresql import BIGSERIAL, UUID
+from sqlalchemy import JSON, TIMESTAMP, BigInteger, Column, Enum, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
 Base = declarative_base()
 
 
+class ReviewJobs(Base):
+    """
+    ReviewJobs Table
+    ----------------
+    - job_id: Unique ID
+    - status: queued, in_progress, completed, canceled, error
+    - created_at: auto
+    - completed_at: set on finish
+    - review_id: references the Reviews table
+    """
+
+    __tablename__ = "review_jobs"
+
+    job_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
+    status = Column(
+        Enum("queued", "in_progress", "completed", "canceled", "error", name="job_status"),
+        nullable=False,
+        default="queued",
+    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    completed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=True)
+
+    review = relationship("Reviews", back_populates="job")
+
+
 class Reviews(Base):
     """
     Reviews Table
     -------------
-    - review_id: Unique ID for the review
-    - language: Programming language of the source code
-    - source_code: Full source code text
-    - diff: Code diff information
-    - file_name: Filename
-    - options: JSON for additional options
-    - created_at: Timestamp when the review was created
-    - model_id: (Optional) references the model used
+    - review_id: Unique ID
+    - language
+    - source_code
+    - diff
+    - file_name
+    - options
+    - created_at
+    - model_id (optional)
     """
 
     __tablename__ = "reviews"
@@ -48,6 +71,8 @@ class Reviews(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     model_id = Column(UUID(as_uuid=True), ForeignKey("models.model_id"), nullable=True)
 
+    job = relationship("ReviewJobs", back_populates="review", uselist=False)
+
     categories = relationship("ReviewCategories", back_populates="review", cascade="all, delete")
     feedbacks = relationship("ReviewFeedback", back_populates="review", cascade="all, delete")
 
@@ -56,16 +81,16 @@ class ReviewCategories(Base):
     """
     ReviewCategories Table
     ----------------------
-    - id: Primary key
-    - review_id: Foreign key to Reviews table
-    - category_name: Category name (e.g., "Memory Management")
-    - message: Feedback message for that category
-    - created_at: Timestamp
+    - id: BigInteger PK
+    - review_id: FK
+    - category_name
+    - message
+    - created_at
     """
 
     __tablename__ = "review_categories"
 
-    id = Column(BIGSERIAL, primary_key=True, autoincrement=True)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=False)
     category_name = Column(String(100), nullable=False)
     message = Column(Text, nullable=False)
@@ -78,16 +103,16 @@ class ReviewFeedback(Base):
     """
     ReviewFeedback Table
     --------------------
-    - feedback_id: Primary key
-    - review_id: Foreign key to Reviews table
-    - category_name: Category for which the feedback is given
-    - user_feedback: e.g., "Good"/"Bad"
-    - created_at: Timestamp
+    - feedback_id: PK
+    - review_id: FK to Reviews
+    - category_name
+    - user_feedback
+    - created_at
     """
 
     __tablename__ = "review_feedback"
 
-    feedback_id = Column(BIGSERIAL, primary_key=True, autoincrement=True)
+    feedback_id = Column(BigInteger, primary_key=True, autoincrement=True)
     review_id = Column(UUID(as_uuid=True), ForeignKey("reviews.review_id"), nullable=False)
     category_name = Column(String(100), nullable=False)
     user_feedback = Column(String(10), nullable=False)
@@ -98,14 +123,9 @@ class ReviewFeedback(Base):
 
 class Models(Base):
     """
-    Models Table (Optional)
-    -----------------------
-    - model_id: Unique model ID
-    - name: Human-readable model name
-    - version: Model version
-    - hosted_by: Hosting environment (e.g., "Ollama")
-    - description: Description of the model
-    - created_at: Timestamp
+    Models Table
+    ------------
+    For storing extra info about the LLM models.
     """
 
     __tablename__ = "models"

@@ -1,3 +1,11 @@
 .DS_Store
 !data/sample_data
 *_cache
+src/.env
+*pyc
+
+src/llm_engines/__pycache__
+src/llm_engines/.ipynb_checkpoints/
+src/__pycache__
+src/.ipynb_checkpoints/
+src/.pytest_cache/
