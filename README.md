@@ -1,6 +1,6 @@
 # LLM Code Review API
 
-This repository hosts a **FastAPI** application supporting **both synchronous** code reviews (legacy `/v2/review` model) and **asynchronous** job-based reviews (new `/v2/jobs` model).
+This repository hosts a **FastAPI** application supporting **asynchronous** job-based reviews (new `/v2/jobs` model).
 
 ## **Features**
 
@@ -216,6 +216,22 @@ ollama list
 }
 ```
 
+
+#### **3. PUT `/v2/jobs/{jobId}`**  
+**Request Body:**
+```json
+{
+  "status": "canceled"
+}
+
+```
+**Response:**
+```json
+{
+    "detail": "Job canceled."
+}
+```
+
 ---
 
 ## **Performance Benchmarks**
@@ -242,6 +258,21 @@ ollama list
 
 ---
 
+## **Error Handling & Response Codes**
+
+### **Common Error Codes**
+
+| HTTP Status | Meaning |
+|------------|---------|
+| 400 | Bad Request - Invalid input provided |
+| 401 | Unauthorized - Authentication failed |
+| 403 | Forbidden - Access denied |
+| 404 | Not Found - Requested resource not available |
+| 422 | Unprocessable Entity - Validation errors |
+| 500 | Internal Server Error - Unexpected issue |
+
+---
+
 ## **FAQ / Troubleshooting**
 
 See the documentation for additional troubleshooting tips.
@@ -249,7 +280,4 @@ See the documentation for additional troubleshooting tips.
 ---
 
 **Happy Coding!** Contributions, issues, and PRs are welcome.
-
-
-
 
