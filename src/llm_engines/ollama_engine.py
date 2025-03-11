@@ -85,7 +85,7 @@ class OllamaEngine(BaseLLMEngine):
 
     def generate_review(self, prompt_str: str) -> Any:
         """
-        Perform inference using the Ollama CLI with multi-GPU support.
+        Perform inference using the Ollama API.
 
         Parameters
         ----------
@@ -95,72 +95,46 @@ class OllamaEngine(BaseLLMEngine):
         Returns
         -------
         str
-            The raw inference result from Ollama (JSON or fallback text).
+            The raw inference result from Ollama API.
 
         Raises
         ------
         RuntimeError
-            If Ollama inference fails.
+            If Ollama API call fails.
         """
-        # Check if Ollama is available
-        if not self.ollama_available:
-            fallback_msg = "Ollama service is not available. Please try again later."
-            logger.error(fallback_msg)
-            return fallback_msg
-            
-        # Check if model is available
-        if not self.model_available:
-            # Try to check again in case the model was downloaded after initialization
-            self.model_available = self.check_model_available()
-            if not self.model_available:
-                fallback_msg = f"Model {OLLAMA_MODEL} is not available. Please check if it has been downloaded."
-                logger.error(fallback_msg)
-                return fallback_msg
-        
         try:
             if DEBUG_MODE:
-                logger.debug(f"[OllamaEngine] Using GPUs: {os.environ.get('CUDA_VISIBLE_DEVICES', 'default')}")
-                logger.debug(f"[OllamaEngine] Sending Prompt:\n{prompt_str}")
+                logger.debug(f"[OllamaEngine] Sending Prompt to API:\n{prompt_str}")
 
-            # Try API approach first
-            try:
-                logger.info(f"Sending request to Ollama API for model {OLLAMA_MODEL}")
-                response = requests.post(
-                    f"{OLLAMA_HOST}/api/generate",
-                    json={"model": OLLAMA_MODEL, "prompt": prompt_str},
-                    timeout=300
-                )
-                
-                if response.status_code == 200:
-                    output = response.json().get("response", "")
-                    if DEBUG_MODE:
-                        logger.debug(f"[OllamaEngine] Raw Output Length: {len(output)} characters")
-                        logger.debug(f"[OllamaEngine] Full Response:\n{output}")
-                    return output
-                else:
-                    logger.warning(f"API request failed with status {response.status_code}. Falling back to CLI.")
-            except Exception as e:
-                logger.warning(f"API request failed: {e}. Falling back to CLI.")
+            import requests
             
-            # Fall back to CLI approach
-            # Construct the command to use all GPUs
-            command_list = ["ollama", "run", OLLAMA_MODEL, prompt_str]
-
-            # Ensure Ollama inherits the multi-GPU environment
-            completed_process = subprocess.run(
-                command_list,
-                capture_output=True,
-                text=True,
-                check=False,
-                env=os.environ,  # Pass modified environment variables (CUDA_VISIBLE_DEVICES)
+            # Get model name from environment or use default
+            model_name = os.getenv("OLLAMA_MODEL", "deepseek-r1:70b")
+            host = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+            
+            logger.info(f"Sending request to Ollama API for model {model_name}")
+            
+            # Make API request
+            response = requests.post(
+                f"{host}/api/generate",
+                json={"model": model_name, "prompt": prompt_str},
+                timeout=600  # 10 minute timeout
             )
-
-            if completed_process.returncode != 0:
-                logger.error(f"Failed to run Ollama inference: {completed_process.stderr}")
-                raise RuntimeError("Ollama inference failed.")
-
-            output = completed_process.stdout.strip()
-
+            
+            if response.status_code != 200:
+                logger.error(f"Failed API call with status code {response.status_code}: {response.text}")
+                raise RuntimeError(f"Ollama API call failed with status {response.status_code}")
+            
+            # Process streaming response
+            output = ""
+            for line in response.text.strip().split('\n'):
+                try:
+                    data = json.loads(line)
+                    if "response" in data:
+                        output += data["response"]
+                except json.JSONDecodeError:
+                    logger.warning(f"Could not parse JSON line: {line}")
+            
             if DEBUG_MODE:
                 logger.debug(f"[OllamaEngine] Raw Output Length: {len(output)} characters")
                 logger.debug(f"[OllamaEngine] Full Response:\n{output}")
@@ -169,5 +143,4 @@ class OllamaEngine(BaseLLMEngine):
 
         except Exception as e:
             logger.exception(f"Error while running Ollama: {e}")
-            fallback_msg = f"An error occurred while generating the review: {str(e)}"
-            return fallback_msg
+            Raises
