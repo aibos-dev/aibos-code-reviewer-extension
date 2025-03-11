@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src # Only mount src directory for development
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ollama
+    command: [ "/app/sh/startup.sh" ]
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    dns:
+      - 8.8.8.8 # Google's public DNS
+      - 8.8.4.4 # Backup Google DNS
+    healthcheck:
+      test: ["CMD", "curl", "-s", "-f", "http://localhost:11434/ || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  ollama_data:

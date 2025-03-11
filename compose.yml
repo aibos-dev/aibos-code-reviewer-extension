@@ -6,7 +6,7 @@ services:
     runtime: nvidia
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.devcontainer
       args:
         UID: 1001
         GID: 1001
