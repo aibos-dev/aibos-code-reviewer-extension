@@ -68,7 +68,12 @@ from src.models_db import Base
 
 # Get the active database URL
 db_url = os.environ.get('DATABASE_URL')
-print(f'Connecting to database: {db_url.split('@')[1]}')
+# Safely extract host from URL for logging
+try:
+    host_part = db_url.split('@')[1].split(':')[0] if '@' in db_url else 'unknown'
+    print('Connecting to database host:', host_part)
+except Exception as e:
+    print('Connecting to database (could not parse URL)')
 
 # Create engine with the active database
 engine = create_engine(db_url)
