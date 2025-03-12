@@ -10,7 +10,7 @@ DB_RETRY_COUNT=0
 LOCAL_DB_AVAILABLE=false
 
 while [ $DB_RETRY_COUNT -lt $MAX_DB_RETRIES ]; do
-    if nc -z postgres 5432; then
+    if nc -z ${POSTGRES_HOST} 5432; then
         echo "Local PostgreSQL is available"
         LOCAL_DB_AVAILABLE=true
         
@@ -70,8 +70,12 @@ from src.models_db import Base
 db_url = os.environ.get('DATABASE_URL')
 # Safely extract host from URL for logging
 try:
-    host_part = db_url.split('@')[1].split(':')[0] if '@' in db_url else 'unknown'
-    print('Connecting to database host:', host_part)
+    # Handle cases where @ might not be in the URL
+    if '@' in db_url:
+        host_part = db_url.split('@')[1].split(':')[0]
+        print(f'Connecting to database host: {host_part}')
+    else:
+        print('Connecting to database (could not parse URL)')
 except Exception as e:
     print('Connecting to database (could not parse URL)')
 
