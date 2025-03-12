@@ -12,6 +12,8 @@ services:
       - ${DATA_DIR}/postgres:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT}:5432"
+    networks:
+      - app-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 5s
@@ -33,6 +35,8 @@ services:
     # depends_on:
     #   postgres:
     #     condition: service_healthy
+    networks:
+      - app-network
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -55,6 +59,8 @@ services:
       - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
+    networks:
+      - app-network
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -64,6 +70,10 @@ services:
       timeout: 60s
       retries: 3
       start_period: 300s
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   ollama_data:
