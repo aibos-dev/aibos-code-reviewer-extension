@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e  # Exit immediately if a command exits with a non-zero status
 
+# Load environment variables
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+echo "Setting up project environment..."
+
 echo "Starting the application..."
 
 # Try to connect to local PostgreSQL first
@@ -87,21 +94,36 @@ Base.metadata.create_all(bind=engine)
 print('Database setup completed!')
 "
 
-# Try to connect to Ollama but don't fail if it's not available
+# Wait for Ollama to be ready
 echo "Checking if Ollama service is available..."
-if curl -s --connect-timeout 5 http://ollama:11434/ > /dev/null; then
-    echo "Ollama is running"
-    
-    # If OLLAMA_MODEL is defined, check if it's available
-    if [ -n "$OLLAMA_MODEL" ]; then
-        echo "Checking if model $OLLAMA_MODEL is available..."
-        if curl -s http://ollama:11434/api/tags | grep -q "$OLLAMA_MODEL"; then
-            echo "Model $OLLAMA_MODEL is available"
-        else
-            echo "Model $OLLAMA_MODEL is not available. The API will continue but LLM features may not work."
-        fi
+OLLAMA_RETRIES=30
+OLLAMA_RETRY_COUNT=0
+OLLAMA_AVAILABLE=false
+
+while [ $OLLAMA_RETRY_COUNT -lt $OLLAMA_RETRIES ]; do
+    if curl -s --connect-timeout 5 http://ollama:11434/ > /dev/null; then
+        echo "Ollama is running"
+        OLLAMA_AVAILABLE=true
+        break
     fi
-else
+    OLLAMA_RETRY_COUNT=$((OLLAMA_RETRY_COUNT+1))
+    echo "Waiting for Ollama service... attempt $OLLAMA_RETRY_COUNT/$OLLAMA_RETRIES"
+    sleep 2
+done
+
+# If Ollama is available and OLLAMA_MODEL is defined, check/pull the model
+if [ "$OLLAMA_AVAILABLE" = true ] && [ -n "$OLLAMA_MODEL" ]; then
+    # Set OLLAMA_HOST environment variable to point to the Ollama container
+    export OLLAMA_HOST=http://ollama:11434
+    
+    echo "Checking if model $OLLAMA_MODEL is available..."
+    if curl -s http://ollama:11434/api/tags | grep -q "$OLLAMA_MODEL"; then
+        echo "Model $OLLAMA_MODEL is already available"
+    else
+        echo "Pulling model $OLLAMA_MODEL..."
+        curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}"
+    fi
+elif [ "$OLLAMA_AVAILABLE" = false ]; then
     echo "Ollama service is not available. The API will continue but LLM features may not work."
 fi
 
