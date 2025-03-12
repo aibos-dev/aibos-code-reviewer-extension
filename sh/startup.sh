@@ -3,32 +3,76 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 echo "Starting the application..."
 
-# Wait for database to be ready
-echo "Waiting for PostgreSQL..."
-MAX_DB_RETRIES=30
+# Try to connect to local PostgreSQL first
+echo "Trying to connect to local PostgreSQL..."
+MAX_DB_RETRIES=10
 DB_RETRY_COUNT=0
+LOCAL_DB_AVAILABLE=false
 
 while [ $DB_RETRY_COUNT -lt $MAX_DB_RETRIES ]; do
     if nc -z postgres 5432; then
-        echo "PostgreSQL is available"
+        echo "Local PostgreSQL is available"
+        LOCAL_DB_AVAILABLE=true
+        
+        # Set environment variables for local DB
+        export ACTIVE_POSTGRES_HOST=${POSTGRES_HOST}
+        export ACTIVE_POSTGRES_PORT=${POSTGRES_PORT}
+        export ACTIVE_POSTGRES_USER=${POSTGRES_USER}
+        export ACTIVE_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        export ACTIVE_POSTGRES_DB=${POSTGRES_DB}
+        
         break
     fi
     DB_RETRY_COUNT=$((DB_RETRY_COUNT+1))
-    echo "Waiting for PostgreSQL... attempt $DB_RETRY_COUNT/$MAX_DB_RETRIES"
+    echo "Waiting for local PostgreSQL... attempt $DB_RETRY_COUNT/$MAX_DB_RETRIES"
     sleep 2
 done
 
-# Check if PostgreSQL is running
-if [ $DB_RETRY_COUNT -eq $MAX_DB_RETRIES ]; then
-    echo "ERROR: PostgreSQL not responding after $MAX_DB_RETRIES attempts"
+# If local PostgreSQL is not available and remote credentials are provided, try remote
+if [ "$LOCAL_DB_AVAILABLE" = false ] && [ -n "$REMOTE_POSTGRES_HOST" ]; then
+    echo "Local PostgreSQL not available. Attempting to connect to remote PostgreSQL..."
+    
+    # Set environment variables for remote DB
+    export ACTIVE_POSTGRES_HOST=${REMOTE_POSTGRES_HOST}
+    export ACTIVE_POSTGRES_PORT=${REMOTE_POSTGRES_PORT}
+    export ACTIVE_POSTGRES_USER=${REMOTE_POSTGRES_USER}
+    export ACTIVE_POSTGRES_PASSWORD=${REMOTE_POSTGRES_PASSWORD}
+    export ACTIVE_POSTGRES_DB=${REMOTE_POSTGRES_DB}
+    
+    # Test connection to remote PostgreSQL
+    if nc -z ${REMOTE_POSTGRES_HOST} ${REMOTE_POSTGRES_PORT}; then
+        echo "Remote PostgreSQL is available"
+        LOCAL_DB_AVAILABLE=true  # Set to true as we found a working DB
+    else
+        echo "ERROR: Remote PostgreSQL not responding"
+        LOCAL_DB_AVAILABLE=false
+    fi
+fi
+
+# If no database is available, exit with error
+if [ "$LOCAL_DB_AVAILABLE" = false ]; then
+    echo "ERROR: No PostgreSQL database available (local or remote)"
     exit 1
 fi
 
+# Update database connection string
+echo "Updating database connection string..."
+export DATABASE_URL="postgresql://${ACTIVE_POSTGRES_USER}:${ACTIVE_POSTGRES_PASSWORD}@${ACTIVE_POSTGRES_HOST}:${ACTIVE_POSTGRES_PORT}/${ACTIVE_POSTGRES_DB}"
+
 # Run database migrations
-echo "Running database migrations..."
+echo "Running database migrations with ${ACTIVE_POSTGRES_HOST} PostgreSQL..."
 python -c "
-from src.database import engine
+import os
+from sqlalchemy import create_engine
 from src.models_db import Base
+
+# Get the active database URL
+db_url = os.environ.get('DATABASE_URL')
+print(f'Connecting to database: {db_url.split('@')[1]}')
+
+# Create engine with the active database
+engine = create_engine(db_url)
+
 print('Creating database tables if they do not exist...')
 Base.metadata.create_all(bind=engine)
 print('Database setup completed!')
