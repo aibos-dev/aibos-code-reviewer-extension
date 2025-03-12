@@ -16,17 +16,23 @@ MAX_DB_RETRIES=10
 DB_RETRY_COUNT=0
 LOCAL_DB_AVAILABLE=false
 
+# Check if POSTGRES_HOST is defined
+if [ -z "$POSTGRES_HOST" ]; then
+    echo "POSTGRES_HOST is not defined. Setting default to postgres"
+    export POSTGRES_HOST="postgres"
+fi
+
 while [ $DB_RETRY_COUNT -lt $MAX_DB_RETRIES ]; do
-    if nc -z ${POSTGRES_HOST} 5432; then
+    if nc -z "$POSTGRES_HOST" "${POSTGRES_PORT:-5432}" 2>/dev/null; then
         echo "Local PostgreSQL is available"
         LOCAL_DB_AVAILABLE=true
         
         # Set environment variables for local DB
-        export ACTIVE_POSTGRES_HOST=${POSTGRES_HOST}
-        export ACTIVE_POSTGRES_PORT=${POSTGRES_PORT}
-        export ACTIVE_POSTGRES_USER=${POSTGRES_USER}
-        export ACTIVE_POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-        export ACTIVE_POSTGRES_DB=${POSTGRES_DB}
+        export ACTIVE_POSTGRES_HOST="${POSTGRES_HOST}"
+        export ACTIVE_POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+        export ACTIVE_POSTGRES_USER="${POSTGRES_USER}"
+        export ACTIVE_POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+        export ACTIVE_POSTGRES_DB="${POSTGRES_DB}"
         
         break
     fi
@@ -40,14 +46,14 @@ if [ "$LOCAL_DB_AVAILABLE" = false ] && [ -n "$REMOTE_POSTGRES_HOST" ]; then
     echo "Local PostgreSQL not available. Attempting to connect to remote PostgreSQL..."
     
     # Set environment variables for remote DB
-    export ACTIVE_POSTGRES_HOST=${REMOTE_POSTGRES_HOST}
-    export ACTIVE_POSTGRES_PORT=${REMOTE_POSTGRES_PORT}
-    export ACTIVE_POSTGRES_USER=${REMOTE_POSTGRES_USER}
-    export ACTIVE_POSTGRES_PASSWORD=${REMOTE_POSTGRES_PASSWORD}
-    export ACTIVE_POSTGRES_DB=${REMOTE_POSTGRES_DB}
+    export ACTIVE_POSTGRES_HOST="${REMOTE_POSTGRES_HOST}"
+    export ACTIVE_POSTGRES_PORT="${REMOTE_POSTGRES_PORT:-5432}"
+    export ACTIVE_POSTGRES_USER="${REMOTE_POSTGRES_USER}"
+    export ACTIVE_POSTGRES_PASSWORD="${REMOTE_POSTGRES_PASSWORD}"
+    export ACTIVE_POSTGRES_DB="${REMOTE_POSTGRES_DB}"
     
     # Test connection to remote PostgreSQL
-    if nc -z ${REMOTE_POSTGRES_HOST} ${REMOTE_POSTGRES_PORT}; then
+    if nc -z "${REMOTE_POSTGRES_HOST}" "${REMOTE_POSTGRES_PORT:-5432}" 2>/dev/null; then
         echo "Remote PostgreSQL is available"
         LOCAL_DB_AVAILABLE=true  # Set to true as we found a working DB
     else
@@ -80,7 +86,7 @@ try:
     # Handle cases where @ might not be in the URL
     if '@' in db_url:
         host_part = db_url.split('@')[1].split(':')[0]
-        print(f'Connecting to database host: {host_part}')
+        print('Connecting to database host: {}'.format(host_part))
     else:
         print('Connecting to database (could not parse URL)')
 except Exception as e:
@@ -101,7 +107,7 @@ OLLAMA_RETRY_COUNT=0
 OLLAMA_AVAILABLE=false
 
 while [ $OLLAMA_RETRY_COUNT -lt $OLLAMA_RETRIES ]; do
-    if curl -s --connect-timeout 5 http://ollama:11434/ > /dev/null; then
+    if curl -s --connect-timeout 5 http://ollama:11434/ > /dev/null 2>&1; then
         echo "Ollama is running"
         OLLAMA_AVAILABLE=true
         break
@@ -117,11 +123,11 @@ if [ "$OLLAMA_AVAILABLE" = true ] && [ -n "$OLLAMA_MODEL" ]; then
     export OLLAMA_HOST=http://ollama:11434
     
     echo "Checking if model $OLLAMA_MODEL is available..."
-    if curl -s http://ollama:11434/api/tags | grep -q "$OLLAMA_MODEL"; then
+    if curl -s http://ollama:11434/api/tags 2>/dev/null | grep -q "$OLLAMA_MODEL"; then
         echo "Model $OLLAMA_MODEL is already available"
     else
         echo "Pulling model $OLLAMA_MODEL..."
-        curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}"
+        curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}" 2>/dev/null
     fi
 elif [ "$OLLAMA_AVAILABLE" = false ]; then
     echo "Ollama service is not available. The API will continue but LLM features may not work."
