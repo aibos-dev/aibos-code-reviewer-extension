@@ -14,6 +14,7 @@ import logging
 import os
 import subprocess
 import requests
+import json
 import time
 from typing import Any
 
@@ -105,8 +106,6 @@ class OllamaEngine(BaseLLMEngine):
         try:
             if DEBUG_MODE:
                 logger.debug(f"[OllamaEngine] Sending Prompt to API:\n{prompt_str}")
-
-            import requests
             
             # Get model name from environment or use default
             model_name = os.getenv("OLLAMA_MODEL", "deepseek-r1:70b")
@@ -143,4 +142,4 @@ class OllamaEngine(BaseLLMEngine):
 
         except Exception as e:
             logger.exception(f"Error while running Ollama: {e}")
-            Raises
+            raise 
