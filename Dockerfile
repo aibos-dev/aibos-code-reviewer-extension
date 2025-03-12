@@ -17,7 +17,7 @@ COPY src/ src/
 COPY sh/ sh/
 
 # Make the scripts executable
-RUN chmod +x sh/setup.sh sh/startup.sh
+RUN chmod +x sh/startup.sh
 
 # Install dependencies with standard pip (more reliable)
 RUN pip install --no-cache-dir -r requirements.txt \
