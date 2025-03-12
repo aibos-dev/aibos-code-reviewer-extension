@@ -3,78 +3,74 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 # Load environment variables
 if [ -f .env ]; then
-    echo "Loading environment variables from .env file..."
     export $(grep -v '^#' .env | xargs)
 fi
 
 echo "Setting up project environment..."
 
-# Set default values if not provided
-: "${POSTGRES_HOST:=localhost}"
-: "${POSTGRES_PORT:=5432}"
-: "${REMOTE_POSTGRES_PORT:=5432}"
+echo "Starting the application..."
 
-# Function to test PostgreSQL connection
-test_postgres_connection() {
-    local host=$1
-    local port=$2
-    local user=$3
-    local password=$4
-    local db=$5
-    
-    echo "Testing connection to PostgreSQL at ${host}:${port}..."
-    
-    # Use PGPASSWORD to avoid password prompt with psql
-    PGPASSWORD="$password" psql -h "$host" -p "$port" -U "$user" -d "$db" -c "SELECT 1;" >/dev/null 2>&1
-    return $?
-}
+# Try to connect to local PostgreSQL first
+echo "Trying to connect to local PostgreSQL..."
+MAX_DB_RETRIES=10
+DB_RETRY_COUNT=0
+LOCAL_DB_AVAILABLE=false
 
-# First try local PostgreSQL
-DB_CONNECTED=false
-
-if [ -n "$POSTGRES_HOST" ] && [ -n "$POSTGRES_USER" ] && [ -n "$POSTGRES_PASSWORD" ] && [ -n "$POSTGRES_DB" ]; then
-    echo "Attempting to connect to local PostgreSQL at ${POSTGRES_HOST}:${POSTGRES_PORT}..."
-    
-    if test_postgres_connection "$POSTGRES_HOST" "$POSTGRES_PORT" "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$POSTGRES_DB"; then
-        echo "Successfully connected to local PostgreSQL"
-        export ACTIVE_POSTGRES_HOST="$POSTGRES_HOST"
-        export ACTIVE_POSTGRES_PORT="$POSTGRES_PORT"
-        export ACTIVE_POSTGRES_USER="$POSTGRES_USER"
-        export ACTIVE_POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
-        export ACTIVE_POSTGRES_DB="$POSTGRES_DB"
-        DB_CONNECTED=true
-    else
-        echo "Failed to connect to local PostgreSQL"
-    fi
+# Check if POSTGRES_HOST is defined
+if [ -z "$POSTGRES_HOST" ]; then
+    echo "POSTGRES_HOST is not defined. Setting default to postgres"
+    export POSTGRES_HOST="postgres"
 fi
 
-# If local connection failed, try remote
-if [ "$DB_CONNECTED" = false ] && [ -n "$REMOTE_POSTGRES_HOST" ] && [ -n "$REMOTE_POSTGRES_USER" ] && [ -n "$REMOTE_POSTGRES_PASSWORD" ] && [ -n "$REMOTE_POSTGRES_DB" ]; then
-    echo "Attempting to connect to remote PostgreSQL at ${REMOTE_POSTGRES_HOST}:${REMOTE_POSTGRES_PORT}..."
+while [ $DB_RETRY_COUNT -lt $MAX_DB_RETRIES ]; do
+    if nc -z "$POSTGRES_HOST" "${POSTGRES_PORT:-5432}" 2>/dev/null; then
+        echo "Local PostgreSQL is available"
+        LOCAL_DB_AVAILABLE=true
+        
+        # Set environment variables for local DB
+        export ACTIVE_POSTGRES_HOST="${POSTGRES_HOST}"
+        export ACTIVE_POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+        export ACTIVE_POSTGRES_USER="${POSTGRES_USER}"
+        export ACTIVE_POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+        export ACTIVE_POSTGRES_DB="${POSTGRES_DB}"
+        
+        break
+    fi
+    DB_RETRY_COUNT=$((DB_RETRY_COUNT+1))
+    echo "Waiting for local PostgreSQL... attempt $DB_RETRY_COUNT/$MAX_DB_RETRIES"
+    sleep 2
+done
+
+# If local PostgreSQL is not available and remote credentials are provided, try remote
+if [ "$LOCAL_DB_AVAILABLE" = false ] && [ -n "$REMOTE_POSTGRES_HOST" ]; then
+    echo "Local PostgreSQL not available. Attempting to connect to remote PostgreSQL..."
     
-    if test_postgres_connection "$REMOTE_POSTGRES_HOST" "$REMOTE_POSTGRES_PORT" "$REMOTE_POSTGRES_USER" "$REMOTE_POSTGRES_PASSWORD" "$REMOTE_POSTGRES_DB"; then
-        echo "Successfully connected to remote PostgreSQL"
-        export ACTIVE_POSTGRES_HOST="$REMOTE_POSTGRES_HOST"
-        export ACTIVE_POSTGRES_PORT="$REMOTE_POSTGRES_PORT"
-        export ACTIVE_POSTGRES_USER="$REMOTE_POSTGRES_USER"
-        export ACTIVE_POSTGRES_PASSWORD="$REMOTE_POSTGRES_PASSWORD"
-        export ACTIVE_POSTGRES_DB="$REMOTE_POSTGRES_DB"
-        DB_CONNECTED=true
+    # Set environment variables for remote DB
+    export ACTIVE_POSTGRES_HOST="${REMOTE_POSTGRES_HOST}"
+    export ACTIVE_POSTGRES_PORT="${REMOTE_POSTGRES_PORT:-5432}"
+    export ACTIVE_POSTGRES_USER="${REMOTE_POSTGRES_USER}"
+    export ACTIVE_POSTGRES_PASSWORD="${REMOTE_POSTGRES_PASSWORD}"
+    export ACTIVE_POSTGRES_DB="${REMOTE_POSTGRES_DB}"
+    
+    # Test connection to remote PostgreSQL
+    if nc -z "${REMOTE_POSTGRES_HOST}" "${REMOTE_POSTGRES_PORT:-5432}" 2>/dev/null; then
+        echo "Remote PostgreSQL is available"
+        LOCAL_DB_AVAILABLE=true  # Set to true as we found a working DB
     else
-        echo "Failed to connect to remote PostgreSQL"
+        echo "ERROR: Remote PostgreSQL not responding"
+        LOCAL_DB_AVAILABLE=false
     fi
 fi
 
 # If no database is available, exit with error
-if [ "$DB_CONNECTED" = false ]; then
-    echo "ERROR: Could not connect to any PostgreSQL database (local or remote)"
+if [ "$LOCAL_DB_AVAILABLE" = false ]; then
+    echo "ERROR: No PostgreSQL database available (local or remote)"
     exit 1
 fi
 
 # Update database connection string
 echo "Updating database connection string..."
 export DATABASE_URL="postgresql://${ACTIVE_POSTGRES_USER}:${ACTIVE_POSTGRES_PASSWORD}@${ACTIVE_POSTGRES_HOST}:${ACTIVE_POSTGRES_PORT}/${ACTIVE_POSTGRES_DB}"
-echo "Using database: ${ACTIVE_POSTGRES_HOST}:${ACTIVE_POSTGRES_PORT}/${ACTIVE_POSTGRES_DB}"
 
 # Run database migrations
 echo "Running database migrations with ${ACTIVE_POSTGRES_HOST} PostgreSQL..."
@@ -85,7 +81,16 @@ from src.models_db import Base
 
 # Get the active database URL
 db_url = os.environ.get('DATABASE_URL')
-print('Connecting to database: ' + db_url.replace(db_url.split(':')[2].split('@')[0], '****'))
+# Safely extract host from URL for logging
+try:
+    # Handle cases where @ might not be in the URL
+    if '@' in db_url:
+        host_part = db_url.split('@')[1].split(':')[0]
+        print('Connecting to database host: {}'.format(host_part))
+    else:
+        print('Connecting to database (could not parse URL)')
+except Exception as e:
+    print('Connecting to database (could not parse URL)')
 
 # Create engine with the active database
 engine = create_engine(db_url)
@@ -95,26 +100,39 @@ Base.metadata.create_all(bind=engine)
 print('Database setup completed!')
 "
 
-# Check for Ollama service
+# Wait for Ollama to be ready
 echo "Checking if Ollama service is available..."
-if curl -s --connect-timeout 5 http://ollama:11434/ > /dev/null 2>&1; then
-    echo "Ollama is running"
-    
-    # If OLLAMA_MODEL is defined, check if it's available
-    if [ -n "$OLLAMA_MODEL" ]; then
-        echo "Checking if model $OLLAMA_MODEL is available..."
-        if curl -s http://ollama:11434/api/tags 2>/dev/null | grep -q "$OLLAMA_MODEL"; then
-            echo "Model $OLLAMA_MODEL is already available"
-        else
-            echo "Pulling model $OLLAMA_MODEL..."
-            curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}" 2>/dev/null
-            echo "Model $OLLAMA_MODEL pull initiated"
-        fi
+OLLAMA_RETRIES=30
+OLLAMA_RETRY_COUNT=0
+OLLAMA_AVAILABLE=false
+
+while [ $OLLAMA_RETRY_COUNT -lt $OLLAMA_RETRIES ]; do
+    if curl -s --connect-timeout 5 http://ollama:11434/ > /dev/null 2>&1; then
+        echo "Ollama is running"
+        OLLAMA_AVAILABLE=true
+        break
     fi
-else
+    OLLAMA_RETRY_COUNT=$((OLLAMA_RETRY_COUNT+1))
+    echo "Waiting for Ollama service... attempt $OLLAMA_RETRY_COUNT/$OLLAMA_RETRIES"
+    sleep 2
+done
+
+# If Ollama is available and OLLAMA_MODEL is defined, check/pull the model
+if [ "$OLLAMA_AVAILABLE" = true ] && [ -n "$OLLAMA_MODEL" ]; then
+    # Set OLLAMA_HOST environment variable to point to the Ollama container
+    export OLLAMA_HOST=http://ollama:11434
+    
+    echo "Checking if model $OLLAMA_MODEL is available..."
+    if curl -s http://ollama:11434/api/tags 2>/dev/null | grep -q "$OLLAMA_MODEL"; then
+        echo "Model $OLLAMA_MODEL is already available"
+    else
+        echo "Pulling model $OLLAMA_MODEL..."
+        curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}" 2>/dev/null
+    fi
+elif [ "$OLLAMA_AVAILABLE" = false ]; then
     echo "Ollama service is not available. The API will continue but LLM features may not work."
 fi
 
 # Run the API server
 echo "Starting API server..."
-exec uvicorn src.main:app --host 0.0.0.0 --port ${API_PORT:-8000}
+exec uvicorn src.main:app --host 0.0.0.0 --port 8000
