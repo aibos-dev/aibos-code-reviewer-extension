@@ -70,6 +70,35 @@ This repository hosts a **FastAPI** application supporting **asynchronous** job-
      -d '{"language":"Python","sourceCode":"print(\"Hello, world!\")","diff":"","options":{}}'
    ```
 
+## **Docker Compose Usage**
+
+You can easily run the entire application stack (API, database, Ollama) using Docker Compose:
+
+### **Starting the Application Stack**
+
+```bash
+# Build and start all services in detached mode
+docker-compose -f docker-compose.yml up --build -d
+```
+
+This command:
+- Builds all necessary containers
+- Starts PostgreSQL, the FastAPI application, and Ollama
+- Runs everything in detached mode (background)
+
+### **Stopping and Cleaning Up**
+
+```bash
+# Stop all services and remove volumes
+docker-compose -f docker-compose.yml down -v
+```
+
+This command:
+- Stops all running containers
+- Removes all created containers
+- Deletes associated volumes (-v flag)
+- Cleans up the environment completely
+
 ---
 
 ## **Requirements**
