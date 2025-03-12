@@ -1,6 +1,6 @@
 {
     "name": "vs-code-extension-container",
-    "dockerComposeFile": "../compose.yml",
+    "dockerComposeFile": "../compose-dev.yml",
     "service": "vs-code-extension-server",
     "workspaceFolder": "/workspace",
     "shutdownAction": "stopCompose",
