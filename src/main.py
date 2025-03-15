@@ -122,7 +122,7 @@ if not custom_docs_path.exists():
     <p>This documentation provides details on endpoints, request/response formats, and examples for the LLM-powered code review API.</p>
     
     <h2>Base URL</h2>
-    <pre><code>http://localhost:8000</code></pre>
+    <pre><code>http://35.221.116.53:8000</code></pre>
     
     <h2>Authentication</h2>
     <p>Currently, the API does not require authentication.</p>
@@ -156,7 +156,7 @@ if not custom_docs_path.exists():
 }</code></pre>
         
         <p><strong>Example:</strong></p>
-        <pre><code>curl -X POST "http://localhost:8000/v2/review" \\
+        <pre><code>curl -X POST "http://35.221.116.53:8000/v2/review" \\
   -H "Content-Type: application/json" \\
   -d '{
     "language": "Python",
@@ -191,7 +191,7 @@ if not custom_docs_path.exists():
 }</code></pre>
         
         <p><strong>Example:</strong></p>
-        <pre><code>curl -X POST "http://localhost:8000/v2/review/feedback" \\
+        <pre><code>curl -X POST "http://35.221.116.53:8000/v2/review/feedback" \\
   -H "Content-Type: application/json" \\
   -d '{
     "reviewId": "550e8400-e29b-41d4-a716-446655440000",
@@ -225,7 +225,7 @@ if not custom_docs_path.exists():
 }</code></pre>
         
         <p><strong>Example:</strong></p>
-        <pre><code>curl -X POST "http://localhost:8000/v2/jobs" \\
+        <pre><code>curl -X POST "http://35.221.116.53:8000/v2/jobs" \\
   -H "Content-Type: application/json" \\
   -d '{
     "language": "JavaScript",
@@ -261,7 +261,7 @@ if not custom_docs_path.exists():
 }</code></pre>
         
         <p><strong>Example:</strong></p>
-        <pre><code>curl -X GET "http://localhost:8000/v2/jobs/550e8400-e29b-41d4-a716-446655440000"</code></pre>
+        <pre><code>curl -X GET "http://35.221.116.53:8000/v2/jobs/550e8400-e29b-41d4-a716-446655440000"</code></pre>
     </div>
     
     <div class="endpoint">
@@ -288,7 +288,7 @@ if not custom_docs_path.exists():
 }</code></pre>
         
         <p><strong>Example:</strong></p>
-        <pre><code>curl -X PUT "http://localhost:8000/v2/jobs/550e8400-e29b-41d4-a716-446655440000" \\
+        <pre><code>curl -X PUT "http://35.221.116.53:8000/v2/jobs/550e8400-e29b-41d4-a716-446655440000" \\
   -H "Content-Type: application/json" \\
   -d '{"status": "canceled"}'</code></pre>
     </div>
