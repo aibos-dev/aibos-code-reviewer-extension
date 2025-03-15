@@ -100,7 +100,7 @@ Base.metadata.create_all(bind=engine)
 print('Database setup completed!')
 "
 
-# Wait for Ollama to be ready
+# Wait for Ollama to be ready with increased timeout
 echo "Checking if Ollama service is available..."
 OLLAMA_RETRIES=30
 OLLAMA_RETRY_COUNT=0
@@ -114,7 +114,7 @@ while [ $OLLAMA_RETRY_COUNT -lt $OLLAMA_RETRIES ]; do
     fi
     OLLAMA_RETRY_COUNT=$((OLLAMA_RETRY_COUNT+1))
     echo "Waiting for Ollama service... attempt $OLLAMA_RETRY_COUNT/$OLLAMA_RETRIES"
-    sleep 2
+    sleep 5  # Increased sleep time
 done
 
 # If Ollama is available and OLLAMA_MODEL is defined, check/pull the model
@@ -123,12 +123,32 @@ if [ "$OLLAMA_AVAILABLE" = true ] && [ -n "$OLLAMA_MODEL" ]; then
     export OLLAMA_HOST=http://ollama:11434
     
     echo "Checking if model $OLLAMA_MODEL is available..."
-    if curl -s http://ollama:11434/api/tags 2>/dev/null | grep -q "$OLLAMA_MODEL"; then
+    if curl -s http://ollama:11434/api/tags 2>/dev/null | grep -q "\"name\":\"$OLLAMA_MODEL\""; then
         echo "Model $OLLAMA_MODEL is already available"
     else
-        echo "Pulling model $OLLAMA_MODEL..."
-        curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}" 2>/dev/null
+        echo "Pulling model $OLLAMA_MODEL. This may take several minutes..."
+        # Show progress during model download
+        curl -X POST http://ollama:11434/api/pull -d "{\"name\":\"$OLLAMA_MODEL\"}" | while read -r line; do
+            echo "$line"
+        done
+        
+        # Verify the model was successfully pulled
+        if curl -s http://ollama:11434/api/tags 2>/dev/null | grep -q "\"name\":\"$OLLAMA_MODEL\""; then
+            echo "Model $OLLAMA_MODEL successfully pulled and ready to use"
+        else
+            echo "WARNING: Failed to pull model $OLLAMA_MODEL. The API will continue, but LLM features may not work."
+        fi
     fi
+    
+    # Check for GPU availability in Ollama
+    GPU_INFO=$(curl -s http://ollama:11434/api/info 2>/dev/null)
+    if echo "$GPU_INFO" | grep -q "\"cuda\""; then
+        echo "GPU acceleration is available for Ollama"
+        echo "$GPU_INFO" | grep -E "\"cuda\"|\"gpu\"" | sed 's/,$//'
+    else
+        echo "WARNING: No GPU acceleration detected for Ollama. Performance may be slower."
+    fi
+    
 elif [ "$OLLAMA_AVAILABLE" = false ]; then
     echo "Ollama service is not available. The API will continue but LLM features may not work."
 fi

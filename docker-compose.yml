@@ -9,9 +9,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
-      - ${DATA_DIR}/postgres:/var/lib/postgresql/data
+      - ${DATA_DIR:-./data}/postgres:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - app-network
     healthcheck:
@@ -32,9 +32,9 @@ services:
       - "8000:8000"
     command: [ "/app/sh/startup.sh" ]
     restart: unless-stopped
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+    depends_on:
+      - ollama
+      - postgres
     networks:
       - app-network
     environment:
@@ -49,18 +49,30 @@ services:
       - REMOTE_POSTGRES_PASSWORD=${REMOTE_POSTGRES_PASSWORD:-}
       - REMOTE_POSTGRES_DB=${REMOTE_POSTGRES_DB:-}
       - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-deepseek-r1:70b}
 
   ollama:
     image: ollama/ollama
     container_name: ollama
     restart: always
     volumes:
-      - ollama_data:/root/.ollama
+      # Mount from host directory specified in .env
+      - ${OLLAMA_MODELS_DIR:-./ollama-models}:/root/.ollama
     ports:
       - "11434:11434"
     networks:
       - app-network
+    # Add GPU support via NVIDIA Container Toolkit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -74,6 +86,3 @@ services:
 networks:
   app-network:
     driver: bridge
-
-volumes:
-  ollama_data:
