@@ -1,6 +1,6 @@
-# LLM Code Review API
+# LLM Code Reviewer API
 
-This repository hosts a **FastAPI** application supporting **asynchronous** job-based reviews (new `/v2/jobs` model).
+This repository hosts a **FastAPI** application supporting **asynchronous** job-based code reviews (new `/v2/jobs` model).
 
 ## **Features**
 
@@ -10,7 +10,7 @@ This repository hosts a **FastAPI** application supporting **asynchronous** job-
 - **PostgreSQL** database with SQLAlchemy ORM
 - **Comprehensive Logging & Error Handling**
 - **Python-dotenv** for environment variable management
-- **VS Code Dev Container Support** for seamless development
+- **Docker Support** for containerized deployment
 
 ---
 
@@ -23,7 +23,7 @@ This repository hosts a **FastAPI** application supporting **asynchronous** job-
    - [3. Install Dependencies](#3-install-dependencies)
    - [4. Prepare the Database](#4-prepare-the-database)
    - [5. Run the App](#5-run-the-app)
-3. [Development Environment Setup with Dev Containers](#development-environment-setup-with-dev-containers)
+3. [Development Environment Setup](#development-environment-setup)
 4. [Downloading and Managing LLM Models](#downloading-and-managing-llm-models)
 5. [API Endpoints](#api-endpoints)
    - [Synchronous Code Review](#synchronous-code-review)
@@ -41,8 +41,8 @@ This repository hosts a **FastAPI** application supporting **asynchronous** job-
 
 1. **Clone & Setup:**
    ```bash
-   git clone https://github.com/aibos-dev/aibos-code-reviewer-extension.git
-   cd aibos-code-reviewer-extension
+   git clone https://github.com/aibos-dev/llm-code-reviewer-api.git
+   cd llm-code-reviewer-api
    ```
 
 2. **Configure & Run:**
@@ -107,7 +107,7 @@ This command:
 - **PostgreSQL** (14 or later)
 - **[Ollama](https://ollama.ai/)** for local LLM inference
 - **Docker** and **Docker Compose** for containerized development
-- **Visual Studio Code** with the **Dev Containers** extension
+- **NVIDIA GPU** (optional, but recommended for better performance)
 
 ---
 
@@ -116,8 +116,8 @@ This command:
 ### **1. Clone Repo**
 
 ```bash
-git clone https://github.com/aibos-dev/aibos-code-reviewer-extension.git
-cd aibos-code-reviewer-extension
+git clone https://github.com/aibos-dev/llm-code-reviewer-api.git
+cd llm-code-reviewer-api
 ```
 
 ### **2. Create .env File**
@@ -132,7 +132,7 @@ POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
 ```
 
-> If using Docker, set `POSTGRES_HOST=db`.
+> If using Docker, set `POSTGRES_HOST=postgres`.
 
 ### **3. Install Dependencies**
 
@@ -168,29 +168,28 @@ python src/main.py --host 0.0.0.0 --port 8000 --debug True
 
 Now your API is live at `http://localhost:8000`.
 
-The docs are also available at `http://localhost:8000/docs` .
+The docs are also available at `http://localhost:8000/docs`.
 
 ---
 
-## **Development Environment Setup with Dev Containers**
+## **Development Environment Setup**
 
 1. **Prerequisites:**
 
    - Install **Docker**: [https://www.docker.com/](https://www.docker.com/)
-   - Install **Visual Studio Code**: [https://code.visualstudio.com/](https://code.visualstudio.com/)
-   - Install the **Dev Containers** extension in VS Code.
+   - Install your preferred code editor or IDE
 
-2. **Setting Up the Dev Container:**
+2. **Setting Up Development Environment:**
 
-   - Open the project in VS Code.
-   - Press `F1`, search for **"Reopen in Container"**, and select it.
-   - The container will be built and configured automatically.
+   - Clone the repository and navigate to the project directory
+   - Set up the environment variables as described in the installation section
+   - Install the development dependencies
 
 3. **Accessing the Development Environment:**
 
-   - Open a terminal inside VS Code.
-   - Run the API: `uvicorn src.main:app --reload`.
-   - Access the API at `http://localhost:8000`.
+   - Open a terminal in your project directory
+   - Run the API: `uvicorn src.main:app --reload`
+   - Access the API at `http://localhost:8000`
 
 ---
 
@@ -200,10 +199,10 @@ The docs are also available at `http://localhost:8000/docs` .
 
 To introduce a new model to Ollama, follow these steps:
 
-1. Ensure the model is compatible with Ollama.
-2. Use the command `ollama pull <model-name>` to download the model.
-3. Update `llm_engines/ollama_engine.py` to include the new model.
-4. Restart the API service to apply changes.
+1. Ensure the model is compatible with Ollama
+2. Use the command `ollama pull <model-name>` to download the model
+3. Update `llm_engines/ollama_engine.py` to include the new model
+4. Restart the API service to apply changes
 
 Default models that come pre-installed with Ollama:
 - `llama2`
@@ -229,7 +228,16 @@ The prompt used for code reviews can be customized in the `config.json` file:
 }
 ```
 
-Modify these values as needed.
+After modifying the `config.json` file, you need to restart the API service for the changes to take effect:
+
+```bash
+# If running directly
+# Press Ctrl+C to stop the current process, then restart:
+uvicorn src.main:app --reload
+
+# If running with Docker Compose
+docker-compose restart app
+```
 
 ### **4. Listing Available Models in Ollama**
 Check available models:
@@ -241,7 +249,33 @@ ollama list
 
 ## **API Endpoints**
 
-#### **1. POST `/v2/review/feedback`**  
+The API provides both synchronous and asynchronous code review endpoints, making it suitable for integration with various clients including IDE extensions, CI/CD pipelines, or standalone applications.
+
+### **Synchronous Code Review**
+
+#### **1. POST `/v2/review`**
+**Request Body:**
+```json
+{
+  "language": "Python",
+  "sourceCode": "def example():\n    return True",
+  "fileName": "example.py",
+  "diff": "...",
+  "options": {}
+}
+```
+**Response:**
+```json
+{
+  "reviewId": "<uuid>",
+  "reviews": [
+    { "category": "General Feedback", "message": "..." },
+    { "category": "Code Readability", "message": "..." }
+  ]
+}
+```
+
+#### **2. POST `/v2/review/feedback`**  
 **Request Body:**
 ```json
 {
@@ -312,7 +346,7 @@ ollama list
 
 ## **Performance Benchmarks**
 
-### **Performance on NVIDIA A6000 ADA GPU**
+### **Performance on NVIDIA RTX A6000 GPU**
 
 - **Average Task Completion Time:** ~51.05 seconds
 - **GPU Usage:** 97% load, 89.7% memory used (only GPU 0 utilized)
@@ -382,9 +416,34 @@ python feedback_extractor.py --include-code
 
 ---
 
+## **Integration with Client Applications**
+
+This API is designed to be integrated with various client applications:
+
+- **IDE Extensions**: Can be integrated with extensions for Visual Studio, Visual Studio Code, JetBrains IDEs, etc.
+- **CI/CD Pipelines**: Can be used in automated code review workflows
+- **Web Applications**: Can provide code review capabilities in web-based platforms
+- **CLI Tools**: Can be integrated with command-line tools for development workflows
+
+The API provides a standardized interface that makes it easy to build various tools and extensions that require code review functionality.
+
+---
+
 ## **FAQ / Troubleshooting**
 
-See the documentation for additional troubleshooting tips.
+### **Common Issues**
+
+1. **Database connection errors**: Ensure PostgreSQL is running and the connection details in `.env` file are correct
+
+2. **Ollama model not found**: Run `ollama pull <model-name>` to download the required model
+
+3. **API startup failures**: Check the logs for detailed error messages and ensure all dependencies are installed
+
+4. **Slow response times**: For large code files, the LLM processing can take significant time. Consider using the asynchronous endpoints for better user experience
+
+### **Advanced Configuration**
+
+For advanced configuration options, check the `config.json` file and the environment variables documented in the installation section.
 
 ---
 
