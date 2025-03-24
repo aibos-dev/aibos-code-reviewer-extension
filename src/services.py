@@ -86,49 +86,52 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
 def _parse_llm_output(raw_output: str) -> list[dict]:
     """
     Parses the LLM output into multiple categories, ensuring proper JSON structure.
-    Handles various edge cases in LLM responses to maintain consistent output format.
-    Removes <think>...</think> tags if present.
+    Handles edge cases in LLM responses and removes <think>...</think> tags.
+    Groups repeated categories into a single entry.
     """
     import re
 
-    # === 1. Remove <think>...</think> tags and their content ===
+    # === 1. Remove <think>...</think> tags ===
     raw_output = re.sub(r"<think>.*?</think>", "", raw_output, flags=re.DOTALL)
 
-    # === 2. Strip any remaining whitespace ===
+    # === 2. Clean up ===
     cleaned_output = raw_output.strip()
 
-    # === 3. Look for JSON array pattern ===
+    # === 3. Extract JSON array ===
     json_match = re.search(r"\[\s*\{.*\}\s*\]", cleaned_output, re.DOTALL)
     if json_match:
         cleaned_output = json_match.group(0)
 
     try:
         data = json.loads(cleaned_output)
-
         if not isinstance(data, list):
             data = [data]
 
-        validated_items = []
-        general_feedback = None
-
+        # Group messages by category
+        grouped = {}
         for item in data:
             if not isinstance(item, dict):
                 continue
+            category = item.get("category")
+            message = item.get("message")
 
-            if "category" in item and "message" in item:
-                if item["category"] == "General Feedback":
-                    general_feedback = item
-                else:
-                    validated_items.append(item)
+            if not category or not message:
+                continue
 
-        if not general_feedback:
-            fallback_message = raw_output
-            if len(fallback_message) > 5000:
-                fallback_message = fallback_message[:1000] + "..."
+            if category not in grouped:
+                grouped[category] = []
 
-            general_feedback = {"category": "General Feedback", "message": fallback_message}
+            grouped[category].append(message)
 
-        result = [general_feedback] + validated_items
+        # Build final structured list
+        result = []
+        if "General Feedback" in grouped:
+            combined_message = "\n".join(grouped.pop("General Feedback"))
+            result.append({"category": "General Feedback", "message": combined_message})
+
+        for cat, messages in grouped.items():
+            for msg in messages:
+                result.append({"category": cat, "message": msg})
 
         logger.debug(f"Parsed LLM Output: {json.dumps(result, indent=2, ensure_ascii=False)}")
         return result
@@ -136,6 +139,7 @@ def _parse_llm_output(raw_output: str) -> list[dict]:
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse LLM JSON. Error: {e}. Raw output: {raw_output[:100]}...")
 
+        # Fallback extraction
         try:
             potential_json = re.findall(r"(\[.*?\]|\{.*?\})", raw_output, re.DOTALL)
             for json_candidate in potential_json:
@@ -152,9 +156,7 @@ def _parse_llm_output(raw_output: str) -> list[dict]:
 
         fallback = [{"category": "General Feedback", "message": raw_output}]
         logger.debug("Using ultimate fallback response")
-
         return fallback
-
 
 
 def format_review_response(review: Reviews) -> dict:
