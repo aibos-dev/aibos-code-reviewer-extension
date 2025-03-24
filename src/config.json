@@ -1,5 +1,5 @@
 {
-    "instructions": "Analyze the given source code based on multiple software quality aspects. Your review must be returned as a valid JSON list. Follow these rules:\n\n- Always include a 'General Feedback' category summarizing overall quality, potential improvements, and missing best practices.\n- Provide actionable insights, specifying exact code lines (if relevant) and including small code examples for fixes.\n- The response should follow this strict JSON format:\n[\n  {\n    \"category\": \"General Feedback\",\n    \"message\": \"Overall analysis and missing best practices.\"\n  },\n  {\n    \"category\": \"{categories}\",\n    \"message\": \"Detailed issue with a fix suggestion (if applicable).\"\n  }\n]\n- Use markdown for inline code (`code`) and code blocks (```language\ncode\n```).\n- Avoid unnecessary text before and after the JSON output.",
+    "instructions": "Analyze the given source code based on multiple software quality aspects. Your review must be returned as a valid JSON list. Follow these strict rules:\n\n- Always include a 'General Feedback' category summarizing overall quality, potential improvements, and missing best practices.\n- Each identified issue must be assigned to a separate category. Avoid combining multiple points into one message.\n- Be concise: Each message should be clear and under 60 characters.\n- Provide actionable insights, specify line numbers (if relevant), and give short code examples for fixes when necessary.\n- The response must be a valid JSON array, formatted like this:\n[\n  {\n    \"category\": \"General Feedback\",\n    \"message\": \"Overall analysis and missing best practices.\"\n  },\n  {\n    \"category\": \"{categories}\",\n    \"message\": \"Detailed issue with a fix suggestion (if applicable).\"\n  }\n]\n- Use markdown for inline code (`code`) and code blocks (```language\ncode\n```).\n- Avoid any extra text before or after the JSON output.",
     "categories": [
         "General Feedback",
         "Memory Management",
@@ -10,12 +10,26 @@
         "Error Handling",
         "Code Readability",
         "Concurrency Issues",
-        "Scalability"
+        "Scalability",
+        "Documentation",
+        "Naming Conventions",
+        "Test Coverage",
+        "Maintainability",
+        "Input Validation",
+        "Code Duplication",
+        "Magic Numbers",
+        "Logging Practices",
+        "Type Safety",
+        "Dead Code",
+        "API Design",
+        "Resource Management"
     ],
     "review_depth": "Deep",
     "format_guidelines": {
         "use_markdown": true,
         "include_line_numbers": true,
-        "max_response_length": 10000
-    }
+        "max_response_length": 1000,
+        "max_message_length": 50
+    },
+    "preferred_language": "Japanese"
 }

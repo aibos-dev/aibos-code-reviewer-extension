@@ -43,16 +43,16 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
     """
 
     # Extract values from config
-    categories_str = ", ".join(CONFIG.get("categories", []))  # Ensure categories exist
+    categories_str = ", ".join(CONFIG.get("categories", []))
     instructions = CONFIG.get("instructions", "").replace("{categories}", categories_str)
 
-    # Format guidelines with safe default values
-    format_guidelines = CONFIG.get("format_guidelines", {})  # Ensure it exists
+    # Format guidelines
+    format_guidelines = CONFIG.get("format_guidelines", {})
     use_markdown = format_guidelines.get("use_markdown", False)
     include_line_numbers = format_guidelines.get("include_line_numbers", False)
-    max_length = format_guidelines.get("max_response_length", 10000)
+    max_length = format_guidelines.get("max_response_length", 1000)
 
-    # Generate additional formatting instructions
+    # Additional formatting notes
     formatting_instructions = []
     if use_markdown:
         formatting_instructions.append("- Use markdown for inline code (`code`) and code blocks.")
@@ -60,6 +60,9 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
         formatting_instructions.append("- Reference specific line numbers where applicable.")
 
     formatting_str = "\n".join(formatting_instructions) if formatting_instructions else ""
+
+    # Get preferred output language
+    preferred_language = CONFIG.get("preferred_language", "English")
 
     base_prompt = (
         f"### Code Review Request ({CONFIG.get('review_depth', 'Deep')} Analysis)\n"
@@ -74,6 +77,9 @@ def _format_prompt(language: str, source_code: str, diff: str | None) -> str:
         f"- Return only valid JSON as output."
     )
 
+    if preferred_language.lower() != "english":
+        base_prompt += f"\n\nPlease respond in {preferred_language}."
+
     return base_prompt
 
 
@@ -81,26 +87,27 @@ def _parse_llm_output(raw_output: str) -> list[dict]:
     """
     Parses the LLM output into multiple categories, ensuring proper JSON structure.
     Handles various edge cases in LLM responses to maintain consistent output format.
+    Removes <think>...</think> tags if present.
     """
     import re
 
-    # Strip any leading/trailing whitespace and detect JSON blocks
+    # === 1. Remove <think>...</think> tags and their content ===
+    raw_output = re.sub(r"<think>.*?</think>", "", raw_output, flags=re.DOTALL)
+
+    # === 2. Strip any remaining whitespace ===
     cleaned_output = raw_output.strip()
 
-    # Look for JSON array pattern - handles cases where LLM might include thinking/explanation
+    # === 3. Look for JSON array pattern ===
     json_match = re.search(r"\[\s*\{.*\}\s*\]", cleaned_output, re.DOTALL)
     if json_match:
         cleaned_output = json_match.group(0)
 
     try:
-        # Parse the JSON
         data = json.loads(cleaned_output)
 
-        # Ensure it's a list
         if not isinstance(data, list):
-            data = [data]  # Convert single object to list
+            data = [data]
 
-        # Validate each item has required fields
         validated_items = []
         general_feedback = None
 
@@ -109,22 +116,18 @@ def _parse_llm_output(raw_output: str) -> list[dict]:
                 continue
 
             if "category" in item and "message" in item:
-                # Store General Feedback separately to ensure it comes first
                 if item["category"] == "General Feedback":
                     general_feedback = item
                 else:
                     validated_items.append(item)
 
-        # If no general feedback was found, create a fallback
         if not general_feedback:
-            # Try to extract a reasonable message from the raw output
             fallback_message = raw_output
-            if len(fallback_message) > 5000:  # Truncate if too long
+            if len(fallback_message) > 5000:
                 fallback_message = fallback_message[:1000] + "..."
 
             general_feedback = {"category": "General Feedback", "message": fallback_message}
 
-        # Return with General Feedback first, followed by other categories
         result = [general_feedback] + validated_items
 
         logger.debug(f"Parsed LLM Output: {json.dumps(result, indent=2, ensure_ascii=False)}")
@@ -133,27 +136,25 @@ def _parse_llm_output(raw_output: str) -> list[dict]:
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse LLM JSON. Error: {e}. Raw output: {raw_output[:100]}...")
 
-        # More robust fallback - try to extract any JSON-like parts
         try:
-            # Look for anything that might be JSON arrays or objects
             potential_json = re.findall(r"(\[.*?\]|\{.*?\})", raw_output, re.DOTALL)
             for json_candidate in potential_json:
                 try:
                     parsed = json.loads(json_candidate)
                     if isinstance(parsed, list) and len(parsed) > 0:
-                        return _parse_llm_output(json_candidate)  # Recursively try to parse this candidate
+                        return _parse_llm_output(json_candidate)
                     if isinstance(parsed, dict) and "category" in parsed and "message" in parsed:
-                        return [parsed]  # We found a valid item
+                        return [parsed]
                 except:
                     continue
         except:
-            pass  # Silently fail if regex fails
+            pass
 
-        # Ultimate fallback - just wrap the raw output
         fallback = [{"category": "General Feedback", "message": raw_output}]
         logger.debug("Using ultimate fallback response")
 
         return fallback
+
 
 
 def format_review_response(review: Reviews) -> dict:

@@ -4,6 +4,8 @@
 src/.env
 *pyc
 
+models
+
 src/llm_engines/__pycache__
 src/llm_engines/.ipynb_checkpoints/
 src/__pycache__
